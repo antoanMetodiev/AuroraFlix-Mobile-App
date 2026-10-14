@@ -65,6 +65,12 @@ class LastViewed {
 
   /// The TMDB id a details screen opens by (legacy movie rows only carry it
   /// at the end of videoURL).
+  /// One movie / series across languages — titles come back translated, so
+  /// match by TMDB id (or series id), by title only when there's neither.
+  String get recordKey => tmdbId != null && tmdbId!.isNotEmpty
+      ? '$type:tmdb:$tmdbId'
+      : (seriesId != null && seriesId!.isNotEmpty ? '$type:series:$seriesId' : '$type:title:$title');
+
   String get detailsId => tmdbId ?? RegExp(r'/(\d+)$').firstMatch(videoURL ?? '')?.group(1) ?? '';
 }
 
@@ -79,7 +85,11 @@ class LastViewedController extends Notifier<List<LastViewed>?> {
   List<LastViewed>? build() {
     final auth = ref.watch(authProvider);
     if (!auth.isLoaded) return null;
-    if (!auth.isSignedIn) return _readLocal().reversed.toList();
+    if (!auth.isSignedIn) {
+      // Newest first, one entry per record (older per-language duplicates drop out).
+      final seen = <String>{};
+      return _readLocal().reversed.where((item) => seen.add(item.recordKey)).toList();
+    }
     Future.microtask(_refreshServer);
     return null;
   }
@@ -108,7 +118,7 @@ class LastViewedController extends Notifier<List<LastViewed>?> {
       await _refreshServer();
       return;
     }
-    final oldestFirst = _readLocal().where((item) => item.title != entry.title).toList()..add(entry);
+    final oldestFirst = _readLocal().where((item) => item.recordKey != entry.recordKey && item.title != entry.title).toList()..add(entry);
     final trimmed = oldestFirst.length > _maxItems ? oldestFirst.sublist(oldestFirst.length - _maxItems) : oldestFirst;
     await ref.read(sharedPreferencesProvider).setString(_storageKey, jsonEncode(trimmed.map((item) => item.toJson()).toList()));
     state = trimmed.reversed.toList();
