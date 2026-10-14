@@ -135,7 +135,8 @@ class DetailsHeader extends ConsumerWidget {
                       runSpacing: 8,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        for (final genre in record.genreList) chip(genre, onTap: () => openGenre(context, record.type, genre)),
+                        for (final genre in record.genreList)
+                          chip(ref.watch(translatorProvider).genre(genre), onTap: () => openGenre(context, record.type, genre)),
                         if (record.releaseDate != null) chip(record.releaseDate!),
                         if (record.rating != null)
                           RatingRing(

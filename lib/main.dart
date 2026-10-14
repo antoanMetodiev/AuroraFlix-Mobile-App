@@ -32,11 +32,22 @@ Future<void> main() async {
   runApp(ProviderScope(overrides: [sharedPreferencesProvider.overrideWithValue(preferences)], child: const AuroraFlixApp()));
 }
 
-class AuroraFlixApp extends StatelessWidget {
+class AuroraFlixApp extends ConsumerWidget {
   const AuroraFlixApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp.router(title: 'AuroraFlix', debugShowCheckedModeBanner: false, theme: buildAppTheme(), routerConfig: appRouter);
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Keyed by the language, so switching it rebuilds the whole app from
+    // scratch on the current screen — every screen loads its data again, in
+    // the new language (titles, descriptions, artwork), like the website's
+    // reload.
+    final locale = ref.watch(localeProvider);
+    return MaterialApp.router(
+      key: ValueKey(locale),
+      title: 'AuroraFlix',
+      debugShowCheckedModeBanner: false,
+      theme: buildAppTheme(),
+      routerConfig: appRouter,
+    );
   }
 }

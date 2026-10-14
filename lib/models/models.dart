@@ -277,7 +277,11 @@ class CinemaRecord {
 
   String? get year => releaseDate != null && releaseDate!.length >= 4 ? releaseDate!.substring(0, 4) : null;
 
-  List<String> get genreList => (genres ?? '').split(',').map((genre) => genre.trim()).where((genre) => genre.isNotEmpty).toList();
+  /// Some series rows store genres as `"Drama".` — the quotes / dot are stripped.
+  List<String> get genreList =>
+      (genres ?? '').split(',').map((genre) => genre.trim().replaceAll(_genreJunk, '')).where((genre) => genre.isNotEmpty).toList();
+
+  static final _genreJunk = RegExp(r'''^["']+|["'.]+$''');
 
   factory CinemaRecord.fromJson(Map<String, dynamic> json, RecordType type) => CinemaRecord(
     id: _str(json['id']) ?? '',
