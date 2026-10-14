@@ -78,7 +78,7 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
     final t = ref.watch(translatorProvider);
     final locale = ref.watch(localeProvider);
     final release = widget.release;
-    final notes = release.notes[locale.name] ?? release.notes['bg'] ?? release.notes['en'];
+    final notes = release.notes[locale.name] ?? release.notes['en'] ?? release.notes['bg'];
     final downloading = _progress != null && !_failed;
 
     Widget pill(String label, VoidCallback onTap, {required bool primary, IconData? icon}) => Expanded(

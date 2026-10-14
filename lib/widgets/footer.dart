@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../core/i18n/locale.dart';
 import '../core/theme.dart';
+import 'reveal.dart';
 
 const _linkedInUrl = 'https://www.linkedin.com/in/antoan-metodiev-875518303';
 
@@ -30,82 +31,85 @@ class SiteFooter extends ConsumerWidget {
     return Container(
       color: AppColors.background,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 64),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'AURORAFLIX',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, letterSpacing: 1.8, color: AppColors.fg(0.85)),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '© ${DateTime.now().year} AuroraFlix. ${t('footer.rights')}',
-            style: TextStyle(fontSize: 14, height: 1.6, color: AppColors.fg(0.7)),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text('${t('footer.tagline')} ', style: TextStyle(fontSize: 14, color: muted)),
-              GestureDetector(
-                onTap: () => launchUrl(Uri.parse(_linkedInUrl), mode: LaunchMode.externalApplication),
-                child: Text(
-                  'Antoan Metodiev',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.fg(0.8),
-                    decoration: TextDecoration.underline,
-                    decorationColor: AppColors.fg(0.25),
+      // The content floats up as the footer scrolls in (same as sections).
+      child: RevealOnScroll(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'AURORAFLIX',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, letterSpacing: 1.8, color: AppColors.fg(0.85)),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '© ${DateTime.now().year} AuroraFlix. ${t('footer.rights')}',
+              style: TextStyle(fontSize: 14, height: 1.6, color: AppColors.fg(0.7)),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text('${t('footer.tagline')} ', style: TextStyle(fontSize: 14, color: muted)),
+                GestureDetector(
+                  onTap: () => launchUrl(Uri.parse(_linkedInUrl), mode: LaunchMode.externalApplication),
+                  child: Text(
+                    'Antoan Metodiev',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.fg(0.8),
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppColors.fg(0.25),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              for (final icon in _socialIcons)
-                Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: FaIcon(icon, size: 26, color: muted),
-                ),
-            ],
-          ),
-          const SizedBox(height: 48),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final columnWidth = (constraints.maxWidth - 32) / 2;
-              return Wrap(
-                spacing: 32,
-                runSpacing: 32,
-                children: [
-                  for (final (titleKey, itemKeys) in _columns)
-                    SizedBox(
-                      width: columnWidth,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Text(
-                              t(titleKey),
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.fg(0.85)),
-                            ),
-                          ),
-                          for (final key in itemKeys)
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                for (final icon in _socialIcons)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: FaIcon(icon, size: 26, color: muted),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 48),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columnWidth = (constraints.maxWidth - 32) / 2;
+                return Wrap(
+                  spacing: 32,
+                  runSpacing: 32,
+                  children: [
+                    for (final (titleKey, itemKeys) in _columns)
+                      SizedBox(
+                        width: columnWidth,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Text(t(key), style: TextStyle(fontSize: 14, color: muted)),
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Text(
+                                t(titleKey),
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.fg(0.85)),
+                              ),
                             ),
-                        ],
+                            for (final key in itemKeys)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Text(t(key), style: TextStyle(fontSize: 14, color: muted)),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                ],
-              );
-            },
-          ),
-        ],
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

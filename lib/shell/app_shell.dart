@@ -70,6 +70,10 @@ class _AppShellState extends ConsumerState<AppShell> {
   bool _menuOpen = false;
   bool _userMenuOpen = false;
   bool _bellOpen = false;
+
+  /// The visible screen is scrolled past its top — the header island turns a
+  /// little denser (same as the site's HeaderIsland).
+  bool _scrolled = false;
   GoRouter? _router;
 
   /// Back from Stripe (checkout / billing portal run in the browser): the
@@ -159,7 +163,17 @@ class _AppShellState extends ConsumerState<AppShell> {
         body: Stack(
           children: [
             Positioned.fill(
-              child: _FadingBranches(currentIndex: currentIndex, children: widget.children),
+              child: NotificationListener<ScrollUpdateNotification>(
+                onNotification: (notification) {
+                  // Only page scrolling — not the horizontal carousels inside.
+                  if (notification.metrics.axis == Axis.vertical) {
+                    final scrolled = notification.metrics.pixels > 12;
+                    if (scrolled != _scrolled) setState(() => _scrolled = scrolled);
+                  }
+                  return false;
+                },
+                child: _FadingBranches(currentIndex: currentIndex, children: widget.children),
+              ),
             ),
 
             // Tap-outside-to-close layer; the header stays above it. Always in
@@ -178,6 +192,7 @@ class _AppShellState extends ConsumerState<AppShell> {
               left: 0,
               right: 0,
               child: SiteHeader(
+                scrolled: _scrolled,
                 searchOpen: _searchOpen,
                 menuOpen: _menuOpen || _userMenuOpen,
                 onLogoTap: () => _goToTab(0),

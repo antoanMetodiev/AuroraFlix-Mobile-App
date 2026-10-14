@@ -102,7 +102,6 @@ class _EpisodesSectionState extends ConsumerState<EpisodesSection> {
       threshold: 0.1,
       builder: (context, inView) => Reveal(
         visible: inView,
-        offset: 56,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 64),
           child: Column(

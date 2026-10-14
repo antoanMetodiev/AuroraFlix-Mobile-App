@@ -8,15 +8,21 @@ import '../core/i18n/locale.dart';
 import '../core/theme.dart';
 import '../screens/friends/notifications_panel.dart';
 import '../widgets/glass.dart';
-import '../widgets/language_toggle.dart';
+import '../widgets/language_select.dart';
 import '../widgets/pressable.dart';
 
+/// Space the header reserves below the status bar — same 4rem the site's
+/// body pt-16 keeps: an 8px gap above the island, the 48px island, and 8px
+/// below it.
 const double headerBarHeight = 64;
+const double _islandHeight = 48;
+const double _islandGap = 8;
 
-/// The fixed top bar — the website's SiteHeader on a phone: logo on the
-/// left; search, (signed in) friends and notifications, language and the
-/// menu button on the right, over a frosted strip with a hairline bottom
-/// border.
+/// The fixed top bar — the website's SiteHeader (HeaderIsland) on a phone:
+/// a floating, fully rounded glass island — as wide as its content, centred —
+/// with a hairline white border and a soft white glow; pale grey glass that
+/// turns a little denser once the screen is scrolled. The logo, then search,
+/// (signed in) friends and notifications, language and the menu button.
 class SiteHeader extends ConsumerWidget {
   const SiteHeader({
     super.key,
@@ -27,7 +33,11 @@ class SiteHeader extends ConsumerWidget {
     required this.onMenuTap,
     required this.onFriendsTap,
     required this.onBellTap,
+    this.scrolled = false,
   });
+
+  /// The current screen is scrolled past its very top.
+  final bool scrolled;
 
   final bool searchOpen;
   final bool menuOpen;
@@ -45,56 +55,77 @@ class SiteHeader extends ConsumerWidget {
     final t = ref.watch(translatorProvider);
     final signedIn = ref.watch(authProvider.select((auth) => auth.isSignedIn));
 
-    return Glass(
-      color: AppColors.background.withValues(alpha: 0.4),
-      border: Border(bottom: BorderSide(color: AppColors.fg(0.1))),
-      child: Padding(
-        padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
-        child: SizedBox(
-          height: headerBarHeight,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Pressable(
-                  onTap: onLogoTap,
-                  semanticLabel: 'AuroraFlix',
-                  child: Image.asset('assets/images/logo.webp', width: 40, height: 40, fit: BoxFit.contain),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(_islandGap, MediaQuery.paddingOf(context).top + _islandGap, _islandGap, 0),
+      // The island hugs its content and sits centred (as on the site), rather
+      // than stretching edge to edge.
+      child: Center(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.white.withValues(alpha: scrolled ? 0.36 : 0.28),
+                blurRadius: scrolled ? 24 : 20,
+                spreadRadius: -2,
+              ),
+            ],
+          ),
+          child: Glass(
+            // Tailwind neutral-700 (#404040) at 30% → 45% once scrolled.
+            color: const Color(0xFF404040).withValues(alpha: scrolled ? 0.45 : 0.3),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 0.5),
+            child: SizedBox(
+              height: _islandHeight,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 10, right: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Pressable(
+                      onTap: onLogoTap,
+                      semanticLabel: 'AuroraFlix',
+                      child: Image.asset('assets/images/logo.webp', width: 36, height: 36, fit: BoxFit.contain),
+                    ),
+                    const SizedBox(width: 12),
+                    HeaderIconButton(
+                      icon: searchOpen ? LucideIcons.x : LucideIcons.search,
+                      label: searchOpen ? t('nav.closeSearch') : t('nav.openSearch'),
+                      onTap: onSearchTap,
+                    ),
+                    if (signedIn) ...[
+                      const SizedBox(width: 8),
+                      HeaderIconButton(
+                        icon: LucideIcons.users,
+                        label: t('friends.usersAria'),
+                        onTap: onFriendsTap,
+                        badge: ref.watch(friendsProvider.select((friends) => friends.incoming.length)),
+                      ),
+                      const SizedBox(width: 8),
+                      HeaderIconButton(
+                        icon: LucideIcons.bell,
+                        label: t('friends.notificationsAria'),
+                        onTap: onBellTap,
+                        badge: ref.watch(notificationCountProvider),
+                        badgePrefix: '+',
+                      ),
+                    ],
+                    const SizedBox(width: 8),
+                    const LanguageSelect(),
+                    const SizedBox(width: 8),
+                    HeaderIconButton(
+                      icon: menuOpen ? LucideIcons.x : LucideIcons.menu,
+                      label: menuOpen ? t('nav.closeMenu') : t('nav.openMenu'),
+                      onTap: onMenuTap,
+                      iconSize: 20,
+                      iconColor: AppColors.foreground,
+                    ),
+                  ],
                 ),
-                const Spacer(),
-                HeaderIconButton(
-                  icon: searchOpen ? LucideIcons.x : LucideIcons.search,
-                  label: searchOpen ? t('nav.closeSearch') : t('nav.openSearch'),
-                  onTap: onSearchTap,
-                ),
-                if (signedIn) ...[
-                  const SizedBox(width: 8),
-                  HeaderIconButton(
-                    icon: LucideIcons.users,
-                    label: t('friends.usersAria'),
-                    onTap: onFriendsTap,
-                    badge: ref.watch(friendsProvider.select((friends) => friends.incoming.length)),
-                  ),
-                  const SizedBox(width: 8),
-                  HeaderIconButton(
-                    icon: LucideIcons.bell,
-                    label: t('friends.notificationsAria'),
-                    onTap: onBellTap,
-                    badge: ref.watch(notificationCountProvider),
-                    badgePrefix: '+',
-                  ),
-                ],
-                const SizedBox(width: 8),
-                const LanguageToggle(),
-                const SizedBox(width: 8),
-                HeaderIconButton(
-                  icon: menuOpen ? LucideIcons.x : LucideIcons.menu,
-                  label: menuOpen ? t('nav.closeMenu') : t('nav.openMenu'),
-                  onTap: onMenuTap,
-                  iconSize: 20,
-                  iconColor: AppColors.foreground,
-                ),
-              ],
+              ),
             ),
           ),
         ),

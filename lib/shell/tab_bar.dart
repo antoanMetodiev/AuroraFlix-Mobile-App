@@ -12,9 +12,10 @@ import 'nav_tabs.dart';
 const double _barHeight = 60;
 const double _gap = 12;
 
-/// The floating bottom navigation from the website's MobileTabBar: a
-/// frosted, rounded pill inset from the screen edges; the active tab's icon
-/// sits in a glowing white chip.
+/// The floating bottom navigation from the website's MobileTabBar: the same
+/// glass island as the header (pale grey glass, hairline white border, soft
+/// white glow), inset from the screen edges. One white pill slides — with a
+/// little overshoot — to the active tab's icon.
 class AuroraTabBar extends ConsumerWidget {
   const AuroraTabBar({super.key, required this.currentIndex, required this.onSelect});
 
@@ -31,31 +32,82 @@ class AuroraTabBar extends ConsumerWidget {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(_gap, 0, _gap, _gap + bottomInset),
-      child: Glass(
-        color: AppColors.surface.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(24),
-        shadows: [BoxShadow(color: Colors.black.withValues(alpha: 0.55), blurRadius: 45, spreadRadius: -8, offset: const Offset(0, 20))],
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-        child: SizedBox(
-          height: _barHeight - 12,
-          child: Row(
-            children: [
-              for (var index = 0; index < navTabs.length; index++)
-                Expanded(
-                  child: _TabItem(
-                    tab: navTabs[index],
-                    label: t(navTabs[index].shortLabelKey ?? navTabs[index].labelKey),
-                    active: index == currentIndex,
-                    onTap: () => onSelect(index),
-                  ),
-                ),
-            ],
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.28), blurRadius: 20, spreadRadius: -2)],
+        ),
+        child: Glass(
+          // Tailwind neutral-700 (#404040) at 45%, like the site.
+          color: const Color(0xFF404040).withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 0.5),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          child: SizedBox(
+            height: _barHeight - 12,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final tabWidth = constraints.maxWidth / navTabs.length;
+                final hasActive = currentIndex >= 0 && currentIndex < navTabs.length;
+                return Stack(
+                  children: [
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 500),
+                      curve: _pillCurve,
+                      left: tabWidth * (hasActive ? currentIndex : 0) + (tabWidth - _pillWidth) / 2,
+                      top: _pillTop,
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 300),
+                        opacity: hasActive ? 1 : 0,
+                        child: Container(
+                          width: _pillWidth,
+                          height: _pillHeight,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(999),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.white.withValues(alpha: 0.6),
+                                blurRadius: 16,
+                                spreadRadius: -3,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        for (var index = 0; index < navTabs.length; index++)
+                          Expanded(
+                            child: _TabItem(
+                              tab: navTabs[index],
+                              label: t(navTabs[index].shortLabelKey ?? navTabs[index].labelKey),
+                              active: index == currentIndex,
+                              onTap: () => onSelect(index),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
     );
   }
 }
+
+/// The site's cubic-bezier(0.34, 1.36, 0.64, 1) — eases in with a small overshoot.
+const Curve _pillCurve = Cubic(0.34, 1.36, 0.64, 1);
+const double _pillWidth = 44;
+const double _pillHeight = 32;
+
+/// The icon box's top inside a tab (the tab column is top-aligned).
+const double _pillTop = 0;
 
 class _TabItem extends StatelessWidget {
   const _TabItem({required this.tab, required this.label, required this.active, required this.onTap});
@@ -73,35 +125,22 @@ class _TabItem extends StatelessWidget {
       onTap: onTap,
       semanticLabel: label,
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        // Top-aligned (not centred) so the icon box sits exactly at _pillTop.
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          AnimatedContainer(
-            duration: duration,
-            curve: Curves.easeOut,
-            height: 30,
-            width: 36,
-            decoration: BoxDecoration(
-              color: active ? Colors.white : Colors.white.withValues(alpha: 0),
-              borderRadius: BorderRadius.circular(999),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.white.withValues(alpha: active ? 0.6 : 0),
-                  blurRadius: 14,
-                  spreadRadius: -3,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
+          SizedBox(
+            height: _pillHeight,
+            width: _pillWidth,
             child: TweenAnimationBuilder<Color?>(
               duration: duration,
-              tween: ColorTween(end: active ? AppColors.onWhite : AppColors.fg(0.5)),
+              tween: ColorTween(end: active ? AppColors.onWhite : AppColors.fg(0.85)),
               builder: (context, color, _) => Icon(tab.icon, size: 17, color: color),
             ),
           ),
           const SizedBox(height: 2),
           AnimatedDefaultTextStyle(
             duration: duration,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: active ? AppColors.foreground : AppColors.fg(0.45)),
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: active ? Colors.white : AppColors.fg(0.8)),
             child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],

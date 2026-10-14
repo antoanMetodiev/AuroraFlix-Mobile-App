@@ -24,7 +24,9 @@ Future<void> main() async {
   );
 
   // Month names for comment dates, in both UI languages.
-  await Future.wait([initializeDateFormatting('bg'), initializeDateFormatting('en_US')]);
+  await Future.wait([
+    for (final locale in ['bg', 'en_US', 'el', 'es']) initializeDateFormatting(locale),
+  ]);
   final preferences = await SharedPreferences.getInstance();
 
   runApp(ProviderScope(overrides: [sharedPreferencesProvider.overrideWithValue(preferences)], child: const AuroraFlixApp()));

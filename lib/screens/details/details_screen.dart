@@ -9,8 +9,10 @@ import '../../models/models.dart';
 import '../../shell/app_shell.dart';
 import '../../widgets/footer.dart';
 import '../../widgets/loader.dart';
+import '../../widgets/reveal.dart';
 import '../../widgets/status_page.dart';
 import 'comments_section.dart';
+import 'details_background.dart';
 import 'details_sections.dart';
 import 'episodes_section.dart';
 import 'player_section.dart';
@@ -86,19 +88,42 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
                         : (orderEpisodes(record.allEpisodes).firstOrNull?.videoURL ?? '')))
               : record.videoURL;
 
-          return ListView(
-            controller: _scroll,
-            padding: shellContentPadding(context),
+          // No top padding: the banner starts at the very top, under the
+          // floating header (DetailsHeader adds the header's height to it).
+          return Stack(
             children: [
-              DetailsHeader(record: record),
-              if (record.trailerURL != null && record.trailerURL!.isNotEmpty) TrailerSection(trailerUrl: record.trailerURL!),
-              CastSection(cast: record.castList),
-              ImageGallery(images: record.imagesList),
-              if (videoUrl != null && (videoUrl.isNotEmpty || record.isSeries))
-                PlayerSection(key: _playerKey, videoUrl: videoUrl, title: record.title, poster: poster),
-              if (record.isSeries) EpisodesSection(series: record, onSelect: _playEpisode),
-              CommentsSection(recordId: record.id, type: record.type),
-              const SiteFooter(),
+              Positioned.fill(child: DetailsBackground(record: record)),
+              ListView(
+                controller: _scroll,
+                padding: shellContentPadding(context).copyWith(top: 0),
+                children: [
+                  DetailsHeader(record: record),
+                  if (record.trailerURL != null && record.trailerURL!.isNotEmpty)
+                    RevealOnScroll(child: TrailerSection(trailerUrl: record.trailerURL!)),
+                  CastSection(cast: record.castList),
+                  RevealOnScroll(child: ImageGallery(images: record.imagesList)),
+                  if (videoUrl != null && (videoUrl.isNotEmpty || record.isSeries))
+                    PlayerSection(key: _playerKey, videoUrl: videoUrl, title: record.title, poster: poster),
+                  if (record.isSeries) EpisodesSection(series: record, onSelect: _playEpisode),
+                  RevealOnScroll(
+                    child: CommentsSection(recordId: record.id, type: record.type),
+                  ),
+                  // Fades the background out into the footer's solid black.
+                  const SizedBox(
+                    height: 120,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, AppColors.background],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SiteFooter(),
+                ],
+              ),
             ],
           );
         },

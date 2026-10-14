@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme.dart';
 import '../../shell/app_shell.dart';
 import '../../widgets/footer.dart';
+import '../../widgets/reveal.dart';
 import 'cult_section.dart';
 import 'hero_section.dart';
 import 'home_data.dart';
@@ -82,7 +83,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             // PAYMENTS DISABLED — nobody is charged for now (same on the website).
             // PricingSection(key: _pricingKey),
-            const LastViewedSection(),
+            const RevealOnScroll(child: LastViewedSection()),
             if (trending != null) TrendingShowcase(movies: trending.movies, series: trending.series),
             if (popular != null) PopularCarousels(movies: popular.movies, series: popular.series),
             const CultSection(),

@@ -7,6 +7,7 @@ import '../../core/navigation.dart';
 import '../../core/theme.dart';
 import '../../core/tmdb.dart';
 import '../../models/models.dart';
+import '../../shell/site_header.dart';
 import '../../widgets/embed_frame/embed_frame.dart';
 import '../../widgets/fade_in_image.dart';
 import '../../widgets/image_lightbox.dart';
@@ -48,7 +49,9 @@ class DetailsHeader extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(
-          height: (screenHeight * 0.46).clamp(320, double.infinity),
+          // Starts at the very top of the screen, under the floating header —
+          // so it's taller by the header's height (same as the site's -mt-16).
+          height: (screenHeight * 0.46).clamp(320, double.infinity) + SiteHeader.reservedHeight(context),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -67,7 +70,10 @@ class DetailsHeader extends ConsumerWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0xBF000000), Colors.transparent, Colors.transparent],
+                    // Only a light shade at the top, so the photo shows around the
+                    // floating header (same as the site).
+                    colors: [Color(0x4D000000), Colors.transparent, Colors.transparent],
+                    stops: [0, 0.25, 1],
                   ),
                 ),
               ),
@@ -131,44 +137,64 @@ class DetailsHeader extends ConsumerWidget {
             ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 32, 16, 40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (record.posterImgURL != null)
-                Container(
-                  width: 128,
-                  height: 192,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.black.withValues(alpha: 0.4), width: 2),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.8), blurRadius: 45, spreadRadius: -10, offset: const Offset(0, 20)),
+        // The overview, over a fade from the banner's black bottom edge into
+        // the page background (DetailsBackground) — no hard line between them.
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 320,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [AppColors.background, Color(0xB3000000), Colors.transparent],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 32, 16, 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (record.posterImgURL != null)
+                    Container(
+                      width: 128,
+                      height: 192,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.black.withValues(alpha: 0.4), width: 2),
+                        boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.3), blurRadius: 24, spreadRadius: -4)],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: AuroraImage(url: tmdbImage(record.posterImgURL, TmdbSize.w780)),
+                    ),
+                  const SizedBox(height: 24),
+                  if (record.description != null && record.description!.isNotEmpty) ...[
+                    Text(
+                      'OVERVIEW',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.6, color: AppColors.fg(0.45)),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(record.description!, style: TextStyle(fontSize: 16, height: 1.75, color: AppColors.fg(0.8))),
+                    const SizedBox(height: 12),
+                  ],
+                  Row(
+                    children: [
+                      WatchlistButton(record: record),
+                      const SizedBox(width: 8),
+                      LikeButton(record: record),
                     ],
                   ),
-                  clipBehavior: Clip.antiAlias,
-                  child: AuroraImage(url: tmdbImage(record.posterImgURL, TmdbSize.w780)),
-                ),
-              const SizedBox(height: 24),
-              if (record.description != null && record.description!.isNotEmpty) ...[
-                Text(
-                  'OVERVIEW',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.6, color: AppColors.fg(0.45)),
-                ),
-                const SizedBox(height: 8),
-                Text(record.description!, style: TextStyle(fontSize: 16, height: 1.75, color: AppColors.fg(0.8))),
-                const SizedBox(height: 12),
-              ],
-              Row(
-                children: [
-                  WatchlistButton(record: record),
-                  const SizedBox(width: 8),
-                  LikeButton(record: record),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ],
     );
@@ -227,7 +253,6 @@ class CastSection extends ConsumerWidget {
       threshold: 0.3,
       builder: (context, inView) => Reveal(
         visible: inView,
-        offset: 48,
         child: Padding(
           padding: const EdgeInsets.only(top: 16, bottom: 64),
           child: Column(
@@ -235,47 +260,102 @@ class CastSection extends ConsumerWidget {
             children: [
               SectionHeading(t('sections.topCast'), padding: const EdgeInsets.symmetric(horizontal: 16)),
               SizedBox(
-                height: cardWidth * 14.7 / 10.8 + 8 + 24,
+                // Room above and below the cards for their white glow.
+                height: cardWidth * 1.5 + 12 + 24,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                  clipBehavior: Clip.none,
                   itemCount: cast.length,
                   separatorBuilder: (context, index) => const SizedBox(width: 16),
-                  itemBuilder: (context, index) {
-                    final actor = cast[index];
-                    final name = actor.nameInRealLife.length >= 17 ? '${actor.nameInRealLife.substring(0, 16)}..' : actor.nameInRealLife;
-                    return Pressable(
-                      onTap: () => openActor(context, actor),
-                      child: SizedBox(
-                        width: cardWidth,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            AspectRatio(
-                              aspectRatio: 10.8 / 14.7,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.05),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                                ),
-                                clipBehavior: Clip.antiAlias,
-                                child: AuroraImage(
-                                  url: actor.imageURL != null ? tmdbImage(actor.imageURL, TmdbSize.w342) : fallbackActorImage,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(name, maxLines: 1, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                  itemBuilder: (context, index) =>
+                      _ActorCard(actor: cast[index], width: cardWidth, ageLabel: (age) => t('actor.ageShort', {'age': age})),
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The website's ActorCard at phone width: a 2:3 portrait with the name and
+/// age over the photo, on a dark fade, with a soft white glow. The site's
+/// hover panel (birthplace, bio, "view profile") has no hover to live on
+/// here — a tap opens the actor page, same as before.
+class _ActorCard extends StatelessWidget {
+  const _ActorCard({required this.actor, required this.width, required this.ageLabel});
+
+  final Actor actor;
+  final double width;
+  final String Function(String age) ageLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final age = calculateAge(actor.birthday);
+
+    return Pressable(
+      onTap: () => openActor(context, actor),
+      semanticLabel: actor.nameInRealLife,
+      child: Container(
+        width: width,
+        height: width * 1.5,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          boxShadow: [
+            BoxShadow(color: Colors.white.withValues(alpha: 0.12), blurRadius: 24, spreadRadius: -10, offset: const Offset(0, 10)),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            AuroraImage(url: actor.imageURL != null ? tmdbImage(actor.imageURL, TmdbSize.w342) : fallbackActorImage),
+            // So the name reads over any photo.
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [Color(0xE6000000), Color(0x26000000), Colors.transparent],
+                  stops: [0, 0.5, 1],
+                ),
+              ),
+            ),
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    actor.nameInRealLife,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      height: 1.3,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      shadows: [Shadow(color: Color(0xCC000000), blurRadius: 8, offset: Offset(0, 2))],
+                    ),
+                  ),
+                  if (age.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        ageLabel(age),
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.65)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

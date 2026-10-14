@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/dates.dart';
 import '../../core/i18n/locale.dart';
 import '../../core/payments/payments.dart';
 import '../../core/theme.dart';
@@ -86,7 +87,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
     final info = subscription.value;
     final isPro = info?.isPro ?? false;
-    final locale = ref.watch(localeProvider) == AppLocale.bg ? 'bg' : 'en_US';
+    final locale = intlLocale(ref.watch(localeProvider).name);
     final periodEnd = info?.currentPeriodEnd == null ? null : DateFormat.yMMMMd(locale).format(info!.currentPeriodEnd!);
 
     return RefreshIndicator(

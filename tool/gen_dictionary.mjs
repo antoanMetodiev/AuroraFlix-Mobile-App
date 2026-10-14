@@ -1,6 +1,8 @@
 // Regenerates lib/core/i18n/dictionary.g.dart from the website's own
-// dictionary (my-app/lib/i18n/dictionary.ts), so both apps share one source
-// of UI copy. Uses my-app's own TypeScript compiler to strip the types.
+// dictionaries (my-app/lib/i18n/dictionary.ts for English + Bulgarian,
+// dictionary.el.ts / dictionary.es.ts for Greek / Spanish), so both apps
+// share one source of UI copy. Uses my-app's own TypeScript compiler to
+// strip the types.
 //
 //   node tool/gen_dictionary.mjs [path/to/my-app]
 import fs from "node:fs";
@@ -15,11 +17,17 @@ const outFile = path.join(root, "lib", "core", "i18n", "dictionary.g.dart");
 const require = createRequire(path.join(appDir, "package.json"));
 const ts = require("typescript");
 
-const source = fs.readFileSync(path.join(appDir, "lib", "i18n", "dictionary.ts"), "utf8");
-const js = ts.transpileModule(source, {
-  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
-}).outputText;
-const mod = await import("data:text/javascript;base64," + Buffer.from(js).toString("base64"));
+async function load(file) {
+  const source = fs.readFileSync(path.join(appDir, "lib", "i18n", file), "utf8");
+  const js = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  return import("data:text/javascript;base64," + Buffer.from(js).toString("base64"));
+}
+
+const mod = await load("dictionary.ts");
+const el = await load("dictionary.el.ts");
+const es = await load("dictionary.es.ts");
 
 const BACKSLASH = String.fromCharCode(92);
 function dartString(value) {
@@ -31,19 +39,21 @@ function dartString(value) {
   return `'${escaped}'`;
 }
 
-function block(name, entries) {
+function block(name, entries, greek, spanish) {
   const lines = Object.entries(entries).map(
-    ([key, value]) => `  ${dartString(key)}: {'en': ${dartString(value.en)}, 'bg': ${dartString(value.bg)}},`
+    ([key, value]) =>
+      `  ${dartString(key)}: {'en': ${dartString(value.en)}, 'bg': ${dartString(value.bg)}, ` +
+      `'el': ${dartString(greek[key] ?? value.en)}, 'es': ${dartString(spanish[key] ?? value.en)}},`
   );
   return `const Map<String, Map<String, String>> ${name} = {\n${lines.join("\n")}\n};\n`;
 }
 
 const output =
-  "// GENERATED from my-app/lib/i18n/dictionary.ts by tool/gen_dictionary.mjs.\n" +
+  "// GENERATED from my-app/lib/i18n/dictionary*.ts by tool/gen_dictionary.mjs.\n" +
   "// Do not edit by hand — change the website's dictionary and regenerate.\n\n" +
-  block("dictionary", mod.dictionary) +
+  block("dictionary", mod.dictionary, el.elDictionary, es.esDictionary) +
   "\n" +
-  block("genreTranslations", mod.GENRE_TRANSLATIONS);
+  block("genreTranslations", mod.GENRE_TRANSLATIONS, el.elGenres, es.esGenres);
 
 fs.mkdirSync(path.dirname(outFile), { recursive: true });
 fs.writeFileSync(outFile, output);

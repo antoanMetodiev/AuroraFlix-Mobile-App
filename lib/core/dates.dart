@@ -11,12 +11,19 @@ String calculateAge(String? birthday) {
   return '$age';
 }
 
+/// The intl locale for an app language code (bg / en / el / es) — every
+/// one of them is initialised in main().
+String intlLocale(String language) => switch (language) {
+  'bg' || 'el' || 'es' => language,
+  _ => 'en_US',
+};
+
 /// "12 октомври 2026 г., 14:05" / "October 12, 2026 at 14:05" — the
 /// website's formatDateTime (long month, 24-hour clock).
 String formatDateTime(String iso, String locale) {
   final date = DateTime.tryParse(iso)?.toLocal();
   if (date == null) return '';
-  final languageTag = locale == 'bg' ? 'bg' : 'en_US';
+  final languageTag = intlLocale(locale);
   return '${DateFormat.yMMMMd(languageTag).format(date)}, ${DateFormat.Hm(languageTag).format(date)}';
 }
 

@@ -39,10 +39,11 @@ class _InViewOnceState extends State<InViewOnce> {
   }
 }
 
-/// The site's `.reveal` / `.reveal-hidden`: fades in and rises 28px into
-/// place over 600ms once [visible] turns true, optionally after [delay].
+/// The site's `.reveal` / `.reveal-hidden`: floats up into place — fades
+/// in, rises [offset] (56px) and grows from 98% — over 900ms once [visible]
+/// turns true, optionally after [delay].
 class Reveal extends StatelessWidget {
-  const Reveal({super.key, required this.visible, required this.child, this.delay = Duration.zero, this.offset = 28});
+  const Reveal({super.key, required this.visible, required this.child, this.delay = Duration.zero, this.offset = 56});
 
   final bool visible;
   final Widget child;
@@ -56,16 +57,36 @@ class Reveal extends StatelessWidget {
       delay: delay,
       builder: (shown) => AnimatedOpacity(
         opacity: shown ? 1 : 0,
-        duration: const Duration(milliseconds: 600),
+        duration: const Duration(milliseconds: 900),
         curve: auroraEase,
         child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: offset, end: shown ? 0 : offset),
-          duration: const Duration(milliseconds: 600),
+          // 0 = hidden (lowered, 98%), 1 = in place.
+          tween: Tween(begin: 0, end: shown ? 1 : 0),
+          duration: const Duration(milliseconds: 900),
           curve: auroraEase,
-          builder: (context, dy, child) => Transform.translate(offset: Offset(0, dy), child: child),
+          builder: (context, progress, child) => Transform.translate(
+            offset: Offset(0, offset * (1 - progress)),
+            child: Transform.scale(scale: 0.98 + 0.02 * progress, child: child),
+          ),
           child: child,
         ),
       ),
+    );
+  }
+}
+
+/// A section that floats up the first time it scrolls into view — the
+/// website's `Reveal` wrapper, for sections without their own entrance.
+class RevealOnScroll extends StatelessWidget {
+  const RevealOnScroll({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return InViewOnce(
+      threshold: 0.12,
+      builder: (context, inView) => Reveal(visible: inView, child: child),
     );
   }
 }

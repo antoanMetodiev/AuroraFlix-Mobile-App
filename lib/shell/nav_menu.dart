@@ -8,7 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/auth/auth_controller.dart';
 import '../core/i18n/locale.dart';
 import '../core/theme.dart';
-import '../widgets/language_toggle.dart';
+import '../widgets/language_select.dart';
 import '../widgets/user_avatar.dart';
 import '../widgets/pressable.dart';
 
@@ -79,7 +79,7 @@ class NavMenu extends ConsumerWidget {
                 _SignUpButton(label: t('nav.signUp'), onTap: onSignUp),
               ],
               const Spacer(),
-              const LanguageToggle(),
+              const LanguageSelect(),
             ],
           ),
         ),
