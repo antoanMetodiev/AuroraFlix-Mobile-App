@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<!-- Where Google sign-in returns to in the browser build: hands the callback
+     URL (with Clerk's rotating_token_nonce) back to the app window that
+     opened this popup. See flutter_web_auth_2's web setup. -->
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Authentication complete</title>
+  <style>html, body { background: #000; color: #f5f5f5; font-family: sans-serif; }</style>
+</head>
+<body>
+  <p>Authentication is complete. If this window doesn't close by itself, please close it.</p>
+  <script>
+    (function () {
+      const message = { 'flutter-web-auth-2': window.location.href };
+      if (window.opener) {
+        window.opener.postMessage(message, window.location.origin);
+        window.close();
+      } else if (window.parent && window.parent !== window) {
+        window.parent.postMessage(message, window.location.origin);
+      } else {
+        localStorage.setItem('flutter-web-auth-2', window.location.href);
+        window.close();
+      }
+    })();
+  </script>
+</body>
+</html>
