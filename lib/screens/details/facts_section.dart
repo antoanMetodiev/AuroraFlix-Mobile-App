@@ -95,7 +95,7 @@ class FactsSection extends ConsumerWidget {
           value: _languageNames[language]?[locale] ?? language.toUpperCase(),
         ),
       if (number('budget') case final value?) (icon: LucideIcons.creditCard, label: t('facts.budget'), value: usd.format(value)),
-      if (number('revenue') case final value?) (icon: LucideIcons.crown, label: t('facts.revenue'), value: usd.format(value)),
+      if (number('revenue') case final value?) (icon: LucideIcons.flame, label: t('facts.revenue'), value: usd.format(value)),
       if (networks.isNotEmpty) (icon: LucideIcons.tv, label: t('facts.networks'), value: networks.join(', ')),
     ];
     final crew = <_Person>[
