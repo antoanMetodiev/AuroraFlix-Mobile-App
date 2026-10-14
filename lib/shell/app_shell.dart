@@ -146,6 +146,16 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 
 
+  /// The tab the bottom bar lights up: a movie's or series' details light up
+  /// Movies / Series (like the website's nav does on /movies/… and /series/…),
+  /// whichever tab they were opened from; anything else, the current tab.
+  int _highlightedTab(int currentIndex) {
+    final path = widget.navigationShell.shellRouteContext.routerState.uri.path;
+    if (path.contains('/title/movie/')) return 1;
+    if (path.contains('/title/series/')) return 2;
+    return currentIndex;
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentIndex = widget.navigationShell.currentIndex;
@@ -311,7 +321,7 @@ class _AppShellState extends ConsumerState<AppShell> {
               left: 0,
               right: 0,
               bottom: 0,
-              child: AuroraTabBar(currentIndex: currentIndex, onSelect: _goToTab),
+              child: AuroraTabBar(currentIndex: _highlightedTab(currentIndex), onSelect: _goToTab),
             ),
           ],
         ),

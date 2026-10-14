@@ -73,12 +73,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         },
         child: ListView(
           controller: _scroll,
-          padding: padding,
+          // No top padding: the hero runs up under the floating header.
+          padding: padding.copyWith(top: 0),
           children: [
             hero.when(
               data: (items) => HeroSection(items: items),
               // Same height as the real hero, so nothing below jumps when it lands.
-              loading: () => SizedBox(height: math.max(MediaQuery.sizeOf(context).height * 0.85 - 64, 560)),
+              loading: () => SizedBox(height: math.max(MediaQuery.sizeOf(context).height * 0.85 - 64, 560) + padding.top),
               error: (_, _) => const HeroSection(items: []),
             ),
             // PAYMENTS DISABLED — nobody is charged for now (same on the website).

@@ -17,6 +17,7 @@ import '../widgets/pressable.dart';
 const double headerBarHeight = 64;
 const double _islandHeight = 48;
 const double _islandGap = 8;
+const double _islandTopGap = 3;
 
 /// The fixed top bar — the website's SiteHeader (HeaderIsland) on a phone:
 /// a floating, fully rounded glass island — as wide as its content, centred —
@@ -56,7 +57,8 @@ class SiteHeader extends ConsumerWidget {
     final signedIn = ref.watch(authProvider.select((auth) => auth.isSignedIn));
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(_islandGap, MediaQuery.paddingOf(context).top + _islandGap, _islandGap, 0),
+      // A little closer to the status bar than to the sides.
+      padding: EdgeInsets.fromLTRB(_islandGap, MediaQuery.paddingOf(context).top + _islandTopGap, _islandGap, 0),
       // The island hugs its content and sits centred (as on the site), rather
       // than stretching edge to edge.
       child: Center(

@@ -7,6 +7,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/i18n/locale.dart';
 import '../../core/navigation.dart';
 import '../../core/theme.dart';
+import '../../shell/site_header.dart';
 import '../../core/tmdb.dart';
 import '../../models/models.dart';
 import '../../widgets/effects.dart';
@@ -53,12 +54,16 @@ class _HeroSectionState extends ConsumerState<HeroSection> {
   Widget build(BuildContext context) {
     final t = ref.watch(translatorProvider);
     final screen = MediaQuery.sizeOf(context);
-    // `h-[calc(85vh-4rem)] min-h-[560px]`
-    final height = math.max(screen.height * 0.85 - 64, 560.0);
+    // The site's `-mt-16 h-[85vh] min-h-[624px]`: the hero starts at the very
+    // top of the screen, under the floating header (the home list has no top
+    // padding), so it's taller by the header's height — the backdrop / trailer
+    // shows around the header island instead of a black strip.
+    final header = SiteHeader.reservedHeight(context);
+    final height = math.max(screen.height * 0.85 - 64, 560.0) + header;
 
     if (widget.items.isEmpty) {
       return SizedBox(
-        height: screen.height * 0.7 - 64,
+        height: screen.height * 0.7 - 64 + header,
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
