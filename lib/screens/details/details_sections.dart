@@ -107,6 +107,20 @@ class DetailsHeader extends ConsumerWidget {
                         shadows: [Shadow(color: Color(0xB3000000), blurRadius: 12, offset: Offset(0, 2))],
                       ),
                     ),
+                    // The original (English) title under a translated one.
+                    if (record.originalTitle != null && record.originalTitle!.isNotEmpty && record.originalTitle != record.title)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          record.originalTitle!,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withValues(alpha: 0.6),
+                            shadows: const [Shadow(color: Color(0xB3000000), blurRadius: 8, offset: Offset(0, 2))],
+                          ),
+                        ),
+                      ),
                     if (record.specialText != null && record.specialText!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),

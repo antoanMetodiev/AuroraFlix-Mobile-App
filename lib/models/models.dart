@@ -223,6 +223,7 @@ class CinemaRecord {
     required this.id,
     required this.type,
     required this.title,
+    this.originalTitle,
     required this.tmdbRating,
     this.movieId,
     this.tmdbId,
@@ -244,6 +245,9 @@ class CinemaRecord {
   final String id;
   final RecordType type;
   final String title;
+
+  /// The English title, sent only when [title] is a translation (?lang).
+  final String? originalTitle;
   final String tmdbRating;
   final String? movieId;
   final String? tmdbId;
@@ -279,6 +283,7 @@ class CinemaRecord {
     id: _str(json['id']) ?? '',
     type: type,
     title: _str(json['title']) ?? '',
+    originalTitle: _str(json['originalTitle']),
     tmdbRating: _str(json['tmdbRating']) ?? '',
     movieId: _str(json['movieId']),
     tmdbId: _str(json['tmdbId']),
