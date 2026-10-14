@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/i18n/locale.dart';
 import '../../core/library/last_viewed.dart';
+import '../../core/library/localized_titles.dart';
+import '../../models/models.dart';
 import '../../core/theme.dart';
 import '../../widgets/work_carousel.dart';
 
@@ -17,6 +19,9 @@ class LastViewedSection extends ConsumerWidget {
     final t = ref.watch(translatorProvider);
     final items = ref.watch(lastViewedProvider) ?? const [];
     if (items.isEmpty) return const SizedBox.shrink();
+    // Each entry keeps the title / poster from when it was opened — show the
+    // catalog's current ones in the app's language.
+    final titles = LocalizedTitles.watch(ref, items.map((entry) => (isSeries: entry.type == RecordType.series, tmdbId: entry.tmdbId)));
 
     return ColoredBox(
       color: AppColors.background,
@@ -25,8 +30,8 @@ class LastViewedSection extends ConsumerWidget {
         items: [
           for (final entry in items)
             WorkCardItem(
-              title: entry.title,
-              posterURL: entry.posterURL,
+              title: titles.lookup(isSeries: entry.type == RecordType.series, tmdbId: entry.tmdbId)?.title ?? entry.title,
+              posterURL: titles.lookup(isSeries: entry.type == RecordType.series, tmdbId: entry.tmdbId)?.posterImgURL ?? entry.posterURL,
               tmdbRating: entry.tmdbRating,
               type: entry.type,
               detailsId: entry.detailsId,

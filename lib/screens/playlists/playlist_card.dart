@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/api/catalog_api.dart';
 import '../../core/i18n/locale.dart';
+import '../../core/library/localized_titles.dart';
 import '../../core/library/playlists.dart';
 import '../../core/library/watchlist.dart';
 import '../../core/navigation.dart';
@@ -269,7 +270,8 @@ class _PlaylistCardState extends ConsumerState<PlaylistCard> {
                                       spacing: 12,
                                       runSpacing: 12,
                                       children: [
-                                        for (final item in _items!.take(_visibleItems))
+                                        // Titles / posters in the app's current language.
+                                        for (final item in localizeLibraryItems(ref, _items)!.take(_visibleItems))
                                           SizedBox(
                                             width: width,
                                             child: LibraryPosterTile(

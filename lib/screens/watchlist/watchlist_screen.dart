@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/i18n/locale.dart';
+import '../../core/library/localized_titles.dart';
 import '../../core/library/watchlist.dart';
 import '../../core/navigation.dart';
 import '../../core/theme.dart';
@@ -29,7 +30,8 @@ class WatchlistScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translatorProvider);
-    final items = ref.watch(watchlistProvider);
+    // Titles / posters in the app's current language (see localizeLibraryItems).
+    final items = localizeLibraryItems(ref, ref.watch(watchlistProvider));
 
     return ListView(
       padding: shellContentPadding(context),

@@ -6,6 +6,7 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/friends/friends_api.dart';
 import '../../core/friends/friends_store.dart';
 import '../../core/i18n/locale.dart';
+import '../../core/library/localized_titles.dart';
 import '../../core/library/playlists.dart';
 import '../../core/library/watchlist.dart';
 import '../../core/theme.dart';
@@ -158,7 +159,8 @@ class _UserProfileModalState extends ConsumerState<_UserProfileModal> {
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  for (final item in _likes!.take(_visibleLikes))
+                  // Titles / posters in the app's current language.
+                  for (final item in localizeLibraryItems(ref, _likes)!.take(_visibleLikes))
                     SizedBox(
                       width: width,
                       child: LibraryPosterTile(item: item),
