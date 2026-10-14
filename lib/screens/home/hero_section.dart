@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../core/dates.dart';
 import '../../core/i18n/locale.dart';
 import '../../core/navigation.dart';
 import '../../core/theme.dart';
@@ -255,8 +256,8 @@ class _HeroDetails extends ConsumerWidget {
               runSpacing: 8,
               children: [
                 chip(record.isSeries ? t('hero.badgeSeries') : t('hero.badgeMovie'), highlighted: true),
-                for (final genre in record.genreList) chip(genre, onTap: () => openGenre(context, record.type, genre)),
-                if (record.releaseDate != null) chip(record.releaseDate!),
+                for (final genre in record.genreList) chip(t.genre(genre), onTap: () => openGenre(context, record.type, genre)),
+                if (record.releaseDate != null) chip(formatReleaseDate(record.releaseDate, ref.watch(localeProvider).name)),
                 chip('4K'),
               ],
             ),
@@ -269,11 +270,7 @@ class _HeroDetails extends ConsumerWidget {
               const SizedBox(width: 8),
               LikeButton(record: record),
               const SizedBox(width: 12),
-              if (record.rating != null)
-                RatingRing(
-                  value: record.rating!,
-                  border: BorderSide(color: Colors.white.withValues(alpha: 0.55), width: 2),
-                ),
+              if (record.rating != null) RatingRing(value: record.rating!),
             ],
           ),
         ],

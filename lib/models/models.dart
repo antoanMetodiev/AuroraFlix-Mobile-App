@@ -61,7 +61,15 @@ class Actor {
 /// One of an actor's titles (gateway `/actor/latest-works/{imdbId}`). The
 /// backend spells the type field `TYPE`.
 class ActorWork {
-  const ActorWork({required this.type, required this.title, required this.posterURL, required this.tmdbRating, this.tmdbId, this.videoURL});
+  const ActorWork({
+    required this.type,
+    required this.title,
+    required this.posterURL,
+    required this.tmdbRating,
+    this.tmdbId,
+    this.videoURL,
+    this.releaseDate,
+  });
 
   final RecordType type;
   final String title;
@@ -69,6 +77,7 @@ class ActorWork {
   final String tmdbRating;
   final String? tmdbId;
   final String? videoURL;
+  final String? releaseDate;
 
   /// TMDB id the details screen opens by (legacy movie rows: end of videoURL).
   String get detailsId => tmdbId ?? RegExp(r'/(\d+)$').firstMatch(videoURL ?? '')?.group(1) ?? '';
@@ -80,6 +89,7 @@ class ActorWork {
     tmdbRating: _str(json['tmdbRating']) ?? '',
     tmdbId: _str(json['tmdbId']),
     videoURL: _str(json['videoURL']),
+    releaseDate: _str(json['releaseDate']),
   );
 }
 

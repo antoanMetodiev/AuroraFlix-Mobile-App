@@ -102,7 +102,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
                   FactsSection(record: record),
                   if (record.trailerURL != null && record.trailerURL!.isNotEmpty)
                     RevealOnScroll(child: TrailerSection(trailerUrl: record.trailerURL!)),
-                  CastSection(cast: record.castList),
+                  CastSection(cast: record.castList, backgroundPath: detailsBackgroundPath(record)),
                   RevealOnScroll(child: ImageGallery(images: record.imagesList)),
                   if (videoUrl != null && (videoUrl.isNotEmpty || record.isSeries))
                     PlayerSection(key: _playerKey, videoUrl: videoUrl, title: record.title, poster: poster),

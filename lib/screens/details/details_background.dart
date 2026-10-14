@@ -19,9 +19,24 @@ class DetailsBackground extends StatelessWidget {
   final CinemaRecord record;
 
   @override
+  Widget build(BuildContext context) => BlurredPageBackdrop(path: detailsBackgroundPath(record));
+}
+
+/// The TMDB image path a record's details screen uses as its background.
+String? detailsBackgroundPath(CinemaRecord record) {
+  final stills = record.imagesList.where((image) => image.imageType == ImageType.backdrop).toList();
+  return stills.length > 1 ? stills[1].imageURL : (stills.firstOrNull?.imageURL ?? record.backgroundImgURL);
+}
+
+/// The blurred, shaded page background itself — also used by the actor
+/// screen, which shows the background of the title it was opened from.
+class BlurredPageBackdrop extends StatelessWidget {
+  const BlurredPageBackdrop({super.key, required this.path});
+
+  final String? path;
+
+  @override
   Widget build(BuildContext context) {
-    final stills = record.imagesList.where((image) => image.imageType == ImageType.backdrop).toList();
-    final path = stills.length > 1 ? stills[1].imageURL : (stills.firstOrNull?.imageURL ?? record.backgroundImgURL);
     final url = tmdbImage(path, TmdbSize.w780);
 
     return RepaintBoundary(

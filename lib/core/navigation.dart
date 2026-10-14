@@ -27,9 +27,21 @@ void openSubscription(BuildContext context) => context.push('${_currentBranchPre
 
 /// The backend has no "get actor by id" endpoint — an actor only exists
 /// inside a title's cast list — so the actor travels along with the route
-/// (the website hands it over through sessionStorage the same way).
-void openActor(BuildContext context, Actor actor) {
-  context.push('${_currentBranchPrefix(context)}/actor/${Uri.encodeComponent(actor.id)}', extra: actor);
+/// (the website hands it over through sessionStorage the same way), with the
+/// background of the title it was opened from, which the actor screen reuses.
+void openActor(BuildContext context, Actor actor, {String? backgroundPath}) {
+  context.push(
+    '${_currentBranchPrefix(context)}/actor/${Uri.encodeComponent(actor.id)}',
+    extra: ActorPageArgs(actor: actor, backgroundPath: backgroundPath),
+  );
+}
+
+/// What [openActor] hands the actor route.
+class ActorPageArgs {
+  const ActorPageArgs({required this.actor, this.backgroundPath});
+
+  final Actor actor;
+  final String? backgroundPath;
 }
 
 String _listPath(RecordType type) => type == RecordType.movie ? '/movies' : '/series';

@@ -137,13 +137,8 @@ class DetailsHeader extends ConsumerWidget {
                       children: [
                         for (final genre in record.genreList)
                           chip(ref.watch(translatorProvider).genre(genre), onTap: () => openGenre(context, record.type, genre)),
-                        if (record.releaseDate != null) chip(record.releaseDate!),
-                        if (record.rating != null)
-                          RatingRing(
-                            value: record.rating!,
-                            size: RatingRingSize.sm,
-                            border: BorderSide(color: Colors.white.withValues(alpha: 0.25), width: 2),
-                          ),
+                        if (record.releaseDate != null) chip(formatReleaseDate(record.releaseDate, ref.watch(localeProvider).name)),
+                        if (record.rating != null) RatingRing(value: record.rating!, size: RatingRingSize.sm),
                       ],
                     ),
                   ],
@@ -254,9 +249,12 @@ class TrailerSection extends ConsumerWidget {
 
 /// "Top Cast" — a sideways row of actor cards; each opens the actor page.
 class CastSection extends ConsumerWidget {
-  const CastSection({super.key, required this.cast});
+  const CastSection({super.key, required this.cast, this.backgroundPath});
 
   final List<Actor> cast;
+
+  /// The details screen's background, handed on to the actor screen.
+  final String? backgroundPath;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -283,8 +281,12 @@ class CastSection extends ConsumerWidget {
                   clipBehavior: Clip.none,
                   itemCount: cast.length,
                   separatorBuilder: (context, index) => const SizedBox(width: 16),
-                  itemBuilder: (context, index) =>
-                      _ActorCard(actor: cast[index], width: cardWidth, ageLabel: (age) => t('actor.ageShort', {'age': age})),
+                  itemBuilder: (context, index) => _ActorCard(
+                    actor: cast[index],
+                    backgroundPath: backgroundPath,
+                    width: cardWidth,
+                    ageLabel: (age) => t('actor.ageShort', {'age': age}),
+                  ),
                 ),
               ),
             ],
@@ -300,9 +302,10 @@ class CastSection extends ConsumerWidget {
 /// hover panel (birthplace, bio, "view profile") has no hover to live on
 /// here — a tap opens the actor page, same as before.
 class _ActorCard extends StatelessWidget {
-  const _ActorCard({required this.actor, required this.width, required this.ageLabel});
+  const _ActorCard({required this.actor, required this.width, required this.ageLabel, this.backgroundPath});
 
   final Actor actor;
+  final String? backgroundPath;
   final double width;
   final String Function(String age) ageLabel;
 
@@ -311,7 +314,7 @@ class _ActorCard extends StatelessWidget {
     final age = calculateAge(actor.birthday);
 
     return Pressable(
-      onTap: () => openActor(context, actor),
+      onTap: () => openActor(context, actor, backgroundPath: backgroundPath),
       semanticLabel: actor.nameInRealLife,
       child: Container(
         width: width,

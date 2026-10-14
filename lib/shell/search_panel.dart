@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../core/api/catalog_api.dart';
+import '../core/dates.dart';
 import '../core/i18n/locale.dart';
 import '../core/theme.dart';
 import '../core/tmdb.dart';
@@ -259,14 +260,14 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-class _SuggestionRow extends StatelessWidget {
+class _SuggestionRow extends ConsumerWidget {
   const _SuggestionRow({required this.record, required this.onTap});
 
   final CinemaRecord record;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final poster = tmdbImage(record.posterImgURL, TmdbSize.w342);
 
     return Pressable(
@@ -294,7 +295,11 @@ class _SuggestionRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(record.title, style: const TextStyle(fontSize: 14, color: AppColors.foreground)),
-                  if (record.releaseDate != null) Text(record.releaseDate!, style: TextStyle(fontSize: 12, color: AppColors.fg(0.65))),
+                  if (record.releaseDate != null)
+                    Text(
+                      formatReleaseDate(record.releaseDate, ref.watch(localeProvider).name),
+                      style: TextStyle(fontSize: 12, color: AppColors.fg(0.65)),
+                    ),
                 ],
               ),
             ),

@@ -31,3 +31,17 @@ String formatDateTime(String iso, String locale) {
 /// photo — same image, same CDN.
 const fallbackActorImage =
     'https://res.cloudinary.com/dxkloyfs1/image/upload/v1760304531/funny-surreal-dog-oil-painting-funny-surreal-pet-animal-dog-classic-oil-painting-bulldog-upper-class-aristocrat-121874909_q0dxgq.webp';
+
+/// A release / air date ("2026-10-09") in the app's language — "9 октомври
+/// 2026 г.", "October 9, 2026", … (website: formatReleaseDate). A bare year or
+/// anything unparseable comes back as-is.
+String formatReleaseDate(String? value, String locale) {
+  if (value == null || value.isEmpty) return '';
+  final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(value.trim());
+  if (match == null) return value;
+  final date = DateTime.utc(int.parse(match[1]!), int.parse(match[2]!), int.parse(match[3]!));
+  return DateFormat.yMMMMd(intlLocale(locale)).format(date);
+}
+
+/// A sortable value for a release date — missing / unparseable dates sort last.
+int releaseDateValue(String? value) => DateTime.tryParse(value ?? '')?.millisecondsSinceEpoch ?? -8640000000000000;

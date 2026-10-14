@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/api/catalog_api.dart';
+import '../../core/dates.dart';
 import '../../core/i18n/locale.dart';
 import '../../core/theme.dart';
 import '../../core/tmdb.dart';
@@ -226,7 +227,7 @@ class _EpisodesSectionState extends ConsumerState<EpisodesSection> {
   }
 }
 
-class _EpisodeCard extends StatelessWidget {
+class _EpisodeCard extends ConsumerWidget {
   const _EpisodeCard({required this.episode, required this.minutesLabel, required this.onTap});
 
   final Episode episode;
@@ -234,7 +235,7 @@ class _EpisodeCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final description = episode.description != null && episode.description!.length > 219
         ? '${episode.description!.substring(0, 219)}..'
         : episode.description;
@@ -308,7 +309,10 @@ class _EpisodeCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    [episode.airDate ?? '', if (episode.runtime != null) '• ${episode.runtime} $minutesLabel'].join(' '),
+                    [
+                      formatReleaseDate(episode.airDate, ref.watch(localeProvider).name),
+                      if (episode.runtime != null) '• ${episode.runtime} $minutesLabel',
+                    ].join(' '),
                     style: TextStyle(fontSize: 12, color: AppColors.fg(0.45)),
                   ),
                   if (description != null && description.isNotEmpty) ...[

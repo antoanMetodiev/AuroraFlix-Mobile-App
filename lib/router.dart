@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/api/catalog_api.dart';
+import 'core/navigation.dart';
 import 'models/models.dart';
 import 'screens/account/subscription_screen.dart';
 import 'screens/actor/actor_screen.dart';
@@ -29,7 +30,10 @@ List<RouteBase> _sharedRoutes() => [
   GoRoute(path: 'account/subscription', builder: (context, state) => const SubscriptionScreen()),
   GoRoute(
     path: 'actor/:id',
-    builder: (context, state) => ActorScreen(actor: state.extra is Actor ? state.extra! as Actor : null),
+    builder: (context, state) {
+      final args = state.extra is ActorPageArgs ? state.extra! as ActorPageArgs : null;
+      return ActorScreen(actor: args?.actor, backgroundPath: args?.backgroundPath);
+    },
   ),
 ];
 
