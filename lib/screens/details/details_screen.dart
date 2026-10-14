@@ -13,6 +13,7 @@ import '../../widgets/reveal.dart';
 import '../../widgets/status_page.dart';
 import 'comments_section.dart';
 import 'details_background.dart';
+import 'facts_section.dart';
 import 'details_sections.dart';
 import 'episodes_section.dart';
 import 'player_section.dart';
@@ -98,6 +99,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
                 padding: shellContentPadding(context).copyWith(top: 0),
                 children: [
                   DetailsHeader(record: record),
+                  FactsSection(record: record),
                   if (record.trailerURL != null && record.trailerURL!.isNotEmpty)
                     RevealOnScroll(child: TrailerSection(trailerUrl: record.trailerURL!)),
                   CastSection(cast: record.castList),
