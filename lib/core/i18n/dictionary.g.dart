@@ -142,6 +142,7 @@ const Map<String, Map<String, String>> dictionary = {
   'sections.loadMore': {'en': 'Load More', 'bg': 'Зареди още', 'el': 'Περισσότερα', 'es': 'Cargar más'},
   'sections.season': {'en': 'Season', 'bg': 'Сезон', 'el': 'Σεζόν', 'es': 'Temporada'},
   'comments.title': {'en': 'Comments', 'bg': 'Коментари', 'el': 'Σχόλια', 'es': 'Comentarios'},
+  'details.similarTitle': {'en': 'You may also like', 'bg': 'Може да харесате', 'el': 'Μπορεί επίσης να σας αρέσουν', 'es': 'También te puede gustar'},
   'comments.placeholder': {'en': 'Share your thoughts...', 'bg': 'Сподели мнението си...', 'el': 'Μοιράσου τη γνώμη σου...', 'es': 'Comparte tu opinión...'},
   'comments.submitAria': {'en': 'Post comment', 'bg': 'Публикувай коментар', 'el': 'Δημοσίευση σχολίου', 'es': 'Publicar comentario'},
   'comments.postError': {'en': 'Couldn\'t post your comment. Please try again.', 'bg': 'Неуспешно публикуване на коментара. Опитай пак.', 'el': 'Δεν ήταν δυνατή η δημοσίευση του σχολίου. Δοκίμασε ξανά.', 'es': 'No se pudo publicar tu comentario. Inténtalo de nuevo.'},

@@ -122,10 +122,18 @@ class _EmbedFrameState extends State<EmbedFrame> {
 
   bool _fullscreen = false;
 
-  void _showFullscreen(Widget video, void Function() onHidden) {
+  Future<void> _showFullscreen(Widget video, void Function() onHidden) async {
     _fullscreen = true;
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+
+    // The video's native view takes its size when it's first shown and
+    // doesn't follow the rotation afterwards — pushed right away, it kept the
+    // portrait size and sat as a small window in the middle of the black
+    // screen. So wait for the screen to actually be landscape first.
+    await _untilLandscape();
+    if (!mounted || !_fullscreen) return;
+
     Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder<void>(
         opaque: true,
@@ -140,6 +148,17 @@ class _EmbedFrameState extends State<EmbedFrame> {
         ),
       ),
     );
+  }
+
+  /// Resolves once the screen is wider than tall (or after ~1.2s, whichever
+  /// comes first), plus a moment for the system bars to finish hiding.
+  Future<void> _untilLandscape() async {
+    final view = View.of(context);
+    final deadline = DateTime.now().add(const Duration(milliseconds: 1200));
+    while (view.physicalSize.width <= view.physicalSize.height && DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 150));
   }
 
   void _hideFullscreen() {

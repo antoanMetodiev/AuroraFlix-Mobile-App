@@ -17,6 +17,7 @@ import 'facts_section.dart';
 import 'details_sections.dart';
 import 'episodes_section.dart';
 import 'player_section.dart';
+import 'similar_titles_section.dart';
 
 typedef _DetailsKey = ({RecordType type, String id});
 
@@ -130,6 +131,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
                   RevealOnScroll(
                     child: CommentsSection(recordId: record.id, type: record.type),
                   ),
+                  SimilarTitlesSection(record: record),
                   // Fades the background out into the footer's solid black.
                   const SizedBox(
                     height: 120,

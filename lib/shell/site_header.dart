@@ -8,7 +8,6 @@ import '../core/i18n/locale.dart';
 import '../core/theme.dart';
 import '../screens/friends/notifications_panel.dart';
 import '../widgets/glass.dart';
-import '../widgets/language_select.dart';
 import '../widgets/pressable.dart';
 
 /// Space the header reserves below the status bar — same 4rem the site's
@@ -67,11 +66,12 @@ class SiteHeader extends ConsumerWidget {
           curve: Curves.easeOut,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
+            // No border — a stronger white glow outlines the island instead.
             boxShadow: [
               BoxShadow(
-                color: Colors.white.withValues(alpha: scrolled ? 0.36 : 0.28),
-                blurRadius: scrolled ? 24 : 20,
-                spreadRadius: -2,
+                color: Colors.white.withValues(alpha: scrolled ? 0.55 : 0.45),
+                blurRadius: scrolled ? 30 : 26,
+                spreadRadius: -1,
               ),
             ],
           ),
@@ -79,7 +79,6 @@ class SiteHeader extends ConsumerWidget {
             // Tailwind neutral-700 (#404040) at 30% → 45% once scrolled.
             color: const Color(0xFF404040).withValues(alpha: scrolled ? 0.45 : 0.3),
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 0.5),
             child: SizedBox(
               height: _islandHeight,
               child: Padding(
@@ -115,8 +114,6 @@ class SiteHeader extends ConsumerWidget {
                         badgePrefix: '+',
                       ),
                     ],
-                    const SizedBox(width: 8),
-                    const LanguageSelect(),
                     const SizedBox(width: 8),
                     HeaderIconButton(
                       icon: menuOpen ? LucideIcons.x : LucideIcons.menu,

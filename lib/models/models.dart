@@ -288,7 +288,10 @@ class CinemaRecord {
   String? get year => releaseDate != null && releaseDate!.length >= 4 ? releaseDate!.substring(0, 4) : null;
 
   /// Some series rows store genres as `"Drama".` — the quotes / dot are stripped.
-  List<String> get genreList =>
+  List<String> get genreList => parseGenres(genres);
+
+  /// A `genres` column ("Drama, Crime") as a list, cleaned the same way.
+  static List<String> parseGenres(String? genres) =>
       (genres ?? '').split(',').map((genre) => genre.trim().replaceAll(_genreJunk, '')).where((genre) => genre.isNotEmpty).toList();
 
   static final _genreJunk = RegExp(r'''^["']+|["'.]+$''');
