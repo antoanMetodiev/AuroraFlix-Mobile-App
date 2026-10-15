@@ -6,12 +6,14 @@ import '../../core/api/catalog_api.dart';
 import '../../core/i18n/locale.dart';
 import '../../models/models.dart';
 import '../../router.dart';
+import '../../core/theme.dart';
 import '../../shell/app_shell.dart';
 import '../../widgets/cinema_record_card.dart';
 import '../../widgets/footer.dart';
 import '../../widgets/loader.dart';
 import '../../widgets/pagination.dart';
 import 'discover_filters.dart';
+import 'list_background.dart';
 
 class CatalogPage {
   const CatalogPage({required this.records, required this.totalPages});
@@ -60,31 +62,40 @@ class CatalogScreen extends ConsumerWidget {
         ? '${t.genre(query.genre!)} $typeLabel'
         : typeLabel;
 
-    return ListView(
-      padding: shellContentPadding(context),
-      children: [
-        // Title search is its own flow — no discover filters there.
-        if (query.search == null) DiscoverFiltersBar(query: query),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
-          child: Text(heading, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
-        ),
-        page.when(
-          loading: () => const Loader(minHeight: 320),
-          error: (_, _) => const CinemaRecordGrid(records: []),
-          data: (result) => Column(
+    // The list scrolls over a fixed background, like the details screen.
+    return ColoredBox(
+      color: AppColors.background,
+      child: Stack(
+        children: [
+          Positioned.fill(child: ListBackground(type: query.type)),
+          ListView(
+            padding: shellContentPadding(context),
             children: [
-              CinemaRecordGrid(records: result.records),
-              PaginationControls(
-                current: query.page,
-                total: result.totalPages,
-                onPage: (page) => context.go(query.location(page: page)),
+              // Title search is its own flow — no discover filters there.
+              if (query.search == null) DiscoverFiltersBar(query: query),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
+                child: Text(heading, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
               ),
+              page.when(
+                loading: () => const Loader(minHeight: 320),
+                error: (_, _) => const CinemaRecordGrid(records: []),
+                data: (result) => Column(
+                  children: [
+                    CinemaRecordGrid(records: result.records),
+                    PaginationControls(
+                      current: query.page,
+                      total: result.totalPages,
+                      onPage: (page) => context.go(query.location(page: page)),
+                    ),
+                  ],
+                ),
+              ),
+              const SiteFooter(),
             ],
           ),
-        ),
-        const SiteFooter(),
-      ],
+        ],
+      ),
     );
   }
 }

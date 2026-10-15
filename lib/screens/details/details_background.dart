@@ -29,15 +29,21 @@ String? detailsBackgroundPath(CinemaRecord record) {
 }
 
 /// The blurred, shaded page background itself — also used by the actor
-/// screen, which shows the background of the title it was opened from.
+/// screen, which shows the background of the title it was opened from, and
+/// the movies / series lists (ListBackground), which pass their own image as
+/// [url].
 class BlurredPageBackdrop extends StatelessWidget {
-  const BlurredPageBackdrop({super.key, required this.path});
+  const BlurredPageBackdrop({super.key, this.path, this.url});
 
+  /// A TMDB image path.
   final String? path;
+
+  /// A full image URL, used instead of [path].
+  final String? url;
 
   @override
   Widget build(BuildContext context) {
-    final url = tmdbImage(path, TmdbSize.w780);
+    final url = this.url ?? tmdbImage(path, TmdbSize.w780);
 
     return RepaintBoundary(
       child: Stack(

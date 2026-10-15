@@ -40,6 +40,7 @@ class DetailsScreen extends ConsumerStatefulWidget {
 class _DetailsScreenState extends ConsumerState<DetailsScreen> {
   final _scroll = ScrollController();
   final _playerKey = GlobalKey();
+  final _episodesKey = GlobalKey();
   bool _tracked = false;
 
   /// For a series: the episode playing (the series record itself has no
@@ -54,12 +55,31 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
 
   void _playEpisode(Episode episode) {
     setState(() => _episodeUrl = episode.videoURL);
-    Future.delayed(const Duration(milliseconds: 100), () {
-      final playerContext = _playerKey.currentContext;
-      if (playerContext != null && playerContext.mounted) {
-        Scrollable.ensureVisible(playerContext, duration: const Duration(milliseconds: 600), curve: auroraEase);
-      }
-    });
+    Future.delayed(const Duration(milliseconds: 100), _scrollToPlayer);
+  }
+
+  /// Brings the player up to the top, like the site does after an episode
+  /// is picked. The ListView builds its children lazily, so once a season's
+  /// (tall) episode list has been scrolled far enough, the player above it
+  /// isn't built any more and has no context to scroll to. In that case
+  /// scroll to the top of the episodes section first — the player sits
+  /// right above it, so it gets built — and then on to the player.
+  Future<void> _scrollToPlayer() async {
+    const duration = Duration(milliseconds: 600);
+
+    if (!mounted) return;
+
+    if (_playerKey.currentContext == null) {
+      final episodesContext = _episodesKey.currentContext;
+      if (episodesContext == null || !episodesContext.mounted) return;
+      await Scrollable.ensureVisible(episodesContext, duration: duration, curve: auroraEase);
+      await WidgetsBinding.instance.endOfFrame;
+    }
+
+    final playerContext = _playerKey.currentContext;
+    if (playerContext != null && playerContext.mounted) {
+      await Scrollable.ensureVisible(playerContext, duration: duration, curve: auroraEase);
+    }
   }
 
   @override
@@ -106,7 +126,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
                   RevealOnScroll(child: ImageGallery(images: record.imagesList)),
                   if (videoUrl != null && (videoUrl.isNotEmpty || record.isSeries))
                     PlayerSection(key: _playerKey, videoUrl: videoUrl, title: record.title, poster: poster),
-                  if (record.isSeries) EpisodesSection(series: record, onSelect: _playEpisode),
+                  if (record.isSeries) EpisodesSection(key: _episodesKey, series: record, onSelect: _playEpisode),
                   RevealOnScroll(
                     child: CommentsSection(recordId: record.id, type: record.type),
                   ),
