@@ -161,7 +161,10 @@ class _ActorScreenState extends ConsumerState<ActorScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(LucideIcons.sparkles, size: 13, color: Colors.white.withValues(alpha: 0.85)),
+                        // The site has Sparkles here; that glyph isn't in the
+                        // 0.3.1+7 APK's icon font, so patches can't use it.
+                        // Back to LucideIcons.sparkles with the next full APK.
+                        Icon(LucideIcons.user, size: 13, color: Colors.white.withValues(alpha: 0.85)),
                         const SizedBox(width: 6),
                         Text(
                           gender == 1 ? t('actor.roleFemale') : t('actor.roleMale'),
@@ -438,7 +441,8 @@ class _Filmography extends ConsumerWidget {
         )
         .toList();
     final tabs = [
-      (_Filter.all, t('actor.filterAll'), LucideIcons.sparkles),
+      // Sparkles on the site — see the role badge above for why not here (yet).
+      (_Filter.all, t('actor.filterAll'), LucideIcons.listVideo),
       (_Filter.movies, t('nav.movies'), LucideIcons.clapperboard),
       (_Filter.series, t('nav.series'), LucideIcons.tv),
     ];
