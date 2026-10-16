@@ -98,13 +98,15 @@ class DetailsHeader extends ConsumerWidget {
                             ),
                         ],
                       ),
-                      style: const TextStyle(
-                        fontSize: 30,
-                        height: 1.25,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.6,
-                        color: Colors.white,
-                        shadows: [Shadow(color: Color(0xB3000000), blurRadius: 12, offset: Offset(0, 2))],
+                      style: display(
+                        const TextStyle(
+                          fontSize: 36,
+                          height: 1.05,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.6,
+                          color: Colors.white,
+                          shadows: [Shadow(color: Color(0xB3000000), blurRadius: 12, offset: Offset(0, 2))],
+                        ),
                       ),
                     ),
                     // The original (English) title under a translated one.
@@ -126,7 +128,7 @@ class DetailsHeader extends ConsumerWidget {
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
                           record.specialText!,
-                          style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Colors.white.withValues(alpha: 0.7)),
+                          style: display(TextStyle(fontSize: 17, fontStyle: FontStyle.italic, color: Colors.white.withValues(alpha: 0.75))),
                         ),
                       ),
                     const SizedBox(height: 16),
@@ -323,9 +325,7 @@ class _ActorCard extends StatelessWidget {
           color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-          boxShadow: [
-            BoxShadow(color: Colors.white.withValues(alpha: 0.12), blurRadius: 24, spreadRadius: -10, offset: const Offset(0, 10)),
-          ],
+          boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.12), blurRadius: 24, spreadRadius: -10, offset: const Offset(0, 10))],
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
@@ -427,6 +427,10 @@ class _ImageGalleryState extends ConsumerState<ImageGallery> {
                   _TypeTabs(
                     value: _type,
                     labels: {ImageType.backdrop: t('sections.backdrops'), ImageType.poster: t('sections.posters')},
+                    counts: {
+                      for (final type in const [ImageType.backdrop, ImageType.poster])
+                        type: widget.images.where((image) => image.imageType == type).length,
+                    },
                     onChanged: (type) => setState(() {
                       _type = type;
                       _visibleCount = _pageSize;
@@ -435,37 +439,53 @@ class _ImageGalleryState extends ConsumerState<ImageGallery> {
                 ],
               ),
               const SizedBox(height: 24),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final width = (constraints.maxWidth - 16) / 2;
-                  return Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
-                    children: [
-                      for (var i = 0; i < visible.length; i++)
-                        Pressable(
-                          onTap: () => showImageLightbox(
-                            context,
-                            paths: visible.map((image) => image.imageURL).toList(),
-                            initialIndex: i,
-                            shape: _type == ImageType.backdrop ? LightboxShape.backdrop : LightboxShape.poster,
-                          ),
-                          pressedScale: 0.95,
-                          child: Container(
-                            width: width,
-                            height: width / aspect,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.05),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              // Switching tabs cross-fades the grids, the new one rising in
+              // slightly (website: the tiles' staggered card-in entrance).
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 450),
+                switchInCurve: auroraEase,
+                switchOutCurve: Curves.easeOut,
+                layoutBuilder: (current, previous) => Stack(alignment: Alignment.topCenter, children: [...previous, ?current]),
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween(begin: const Offset(0, 0.03), end: Offset.zero).animate(animation),
+                    child: child,
+                  ),
+                ),
+                child: LayoutBuilder(
+                  key: ValueKey(_type),
+                  builder: (context, constraints) {
+                    final width = (constraints.maxWidth - 16) / 2;
+                    return Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        for (var i = 0; i < visible.length; i++)
+                          Pressable(
+                            onTap: () => showImageLightbox(
+                              context,
+                              paths: visible.map((image) => image.imageURL).toList(),
+                              initialIndex: i,
+                              shape: _type == ImageType.backdrop ? LightboxShape.backdrop : LightboxShape.poster,
                             ),
-                            clipBehavior: Clip.antiAlias,
-                            child: AuroraImage(url: tmdbImage(visible[i].imageURL, TmdbSize.w780)),
+                            pressedScale: 0.95,
+                            child: Container(
+                              width: width,
+                              height: width / aspect,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: AuroraImage(url: tmdbImage(visible[i].imageURL, TmdbSize.w780)),
+                            ),
                           ),
-                        ),
-                    ],
-                  );
-                },
+                      ],
+                    );
+                  },
+                ),
               ),
               if (allOfType.length > _pageSize)
                 Center(
@@ -498,11 +518,16 @@ class _ImageGalleryState extends ConsumerState<ImageGallery> {
 }
 
 class _TypeTabs extends StatelessWidget {
-  const _TypeTabs({required this.value, required this.labels, required this.onChanged});
+  const _TypeTabs({required this.value, required this.labels, required this.counts, required this.onChanged});
 
   final ImageType value;
   final Map<ImageType, String> labels;
+
+  /// How many images each tab has, shown dimmed next to its label.
+  final Map<ImageType, int> counts;
   final ValueChanged<ImageType> onChanged;
+
+  static const _duration = Duration(milliseconds: 500);
 
   @override
   Widget build(BuildContext context) {
@@ -513,26 +538,57 @@ class _TypeTabs extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: AppColors.fg(0.1)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final type in const [ImageType.backdrop, ImageType.poster])
-            GestureDetector(
-              onTap: () => onChanged(type),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: type == value ? Colors.white : Colors.white.withValues(alpha: 0),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  labels[type]!,
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: type == value ? AppColors.onWhite : AppColors.fg(0.6)),
+      // Two equal-width tabs with the white highlight sliding between them.
+      child: IntrinsicWidth(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: AnimatedAlign(
+                duration: _duration,
+                curve: auroraEase,
+                alignment: value == ImageType.backdrop ? Alignment.centerLeft : Alignment.centerRight,
+                child: FractionallySizedBox(
+                  widthFactor: 0.5,
+                  heightFactor: 1,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999)),
+                  ),
                 ),
               ),
             ),
-        ],
+            Row(
+              children: [
+                for (final type in const [ImageType.backdrop, ImageType.poster])
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => onChanged(type),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        child: AnimatedDefaultTextStyle(
+                          duration: _duration,
+                          curve: auroraEase,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: type == value ? AppColors.onWhite : AppColors.fg(0.6)),
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(text: labels[type]!),
+                                TextSpan(
+                                  text: '  ${counts[type] ?? 0}',
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

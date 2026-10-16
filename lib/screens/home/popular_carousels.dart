@@ -213,12 +213,7 @@ class _Stage extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             for (final index in order)
-              _CoverCard(
-                key: ValueKey(items[index].id),
-                record: items[index],
-                offset: offsetOf(index),
-                onTap: () => onSelect(offsetOf(index)),
-              ),
+              _CoverCard(key: ValueKey(items[index].id), record: items[index], offset: offsetOf(index), onTap: () => onSelect(offsetOf(index))),
             Positioned(
               left: 8,
               child: _ArrowButton(icon: LucideIcons.chevronLeft, label: previousLabel, onTap: () => onSwipe(-1)),
@@ -374,7 +369,7 @@ class _ActiveInfo extends ConsumerWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.6, color: Colors.white),
+              style: display(const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: -0.4, color: Colors.white)),
             ),
             const SizedBox(height: 16),
             Row(

@@ -125,8 +125,7 @@ class _ActorScreenState extends ConsumerState<ActorScreen> {
     ];
     final socials = <(FaIconData, String, String)>[
       if (actor.imdbId != null) (FontAwesomeIcons.imdb, 'IMDb', 'https://www.imdb.com/name/${actor.imdbId}/'),
-      if (actor.instagramUsername != null)
-        (FontAwesomeIcons.instagram, 'Instagram', 'https://www.instagram.com/${actor.instagramUsername}'),
+      if (actor.instagramUsername != null) (FontAwesomeIcons.instagram, 'Instagram', 'https://www.instagram.com/${actor.instagramUsername}'),
       if (actor.twitterUsername != null) (FontAwesomeIcons.twitter, 'X', 'https://x.com/${actor.twitterUsername}'),
       if (actor.facebookUsername != null) (FontAwesomeIcons.facebook, 'Facebook', 'https://www.facebook.com/${actor.facebookUsername}'),
     ];
@@ -189,12 +188,14 @@ class _ActorScreenState extends ConsumerState<ActorScreen> {
                     child: Text(
                       actor.nameInRealLife,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 38,
-                        height: 0.98,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.8,
-                        shadows: [Shadow(color: Color(0x80000000), blurRadius: 24, offset: Offset(0, 4))],
+                      style: display(
+                        const TextStyle(
+                          fontSize: 38,
+                          height: 0.98,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.8,
+                          shadows: [Shadow(color: Color(0x80000000), blurRadius: 24, offset: Offset(0, 4))],
+                        ),
                       ),
                     ),
                   ),
@@ -354,11 +355,7 @@ class _Portrait extends StatelessWidget {
             if (image != null) AuroraImage(url: image!),
             const DecoratedBox(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.center,
-                  colors: [Color(0x80000000), Colors.transparent],
-                ),
+                gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.center, colors: [Color(0x80000000), Colors.transparent]),
               ),
             ),
           ],
@@ -395,9 +392,7 @@ class _StatTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(color: Colors.white.withValues(alpha: 0.5), blurRadius: 20, spreadRadius: -6, offset: const Offset(0, 6)),
-                  ],
+                  boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.5), blurRadius: 20, spreadRadius: -6, offset: const Offset(0, 6))],
                 ),
                 child: Icon(icon, size: 16, color: AppColors.onWhite),
               ),
@@ -503,14 +498,7 @@ class _Filmography extends ConsumerWidget {
                           color: filter == value ? Colors.white : Colors.transparent,
                           borderRadius: BorderRadius.circular(999),
                           boxShadow: filter == value
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.white.withValues(alpha: 0.5),
-                                    blurRadius: 16,
-                                    spreadRadius: -4,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ]
+                              ? [BoxShadow(color: Colors.white.withValues(alpha: 0.5), blurRadius: 16, spreadRadius: -4, offset: const Offset(0, 4))]
                               : null,
                         ),
                         child: Row(
@@ -626,12 +614,7 @@ class _WorkCard extends ConsumerWidget {
                     const SizedBox(width: 4),
                     Text(
                       (isSeries ? t('watchlist.series') : t('watchlist.movie')).toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.4,
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.4, color: Colors.white.withValues(alpha: 0.9)),
                     ),
                   ],
                 ),
@@ -763,9 +746,7 @@ class _MoreMoviesButtonState extends ConsumerState<_MoreMoviesButton> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(999),
-            boxShadow: [
-              BoxShadow(color: Colors.white.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: -4, offset: const Offset(0, 8)),
-            ],
+            boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: -4, offset: const Offset(0, 8))],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,

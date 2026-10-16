@@ -34,7 +34,7 @@ Future<void> showFriendsModal(BuildContext context) async {
               child: Text(
                 ref.watch(translatorProvider)('friends.title'),
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.6),
+                style: display(const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: -0.6)),
               ),
             ),
           ],
@@ -290,12 +290,7 @@ class _FriendsPanelState extends ConsumerState<FriendsPanel> {
                     emptyLabel: t('friends.noPending'),
                     onOpenProfile: openProfile,
                     actions: (request) => [
-                      _ActionIcon(
-                        icon: LucideIcons.check,
-                        label: t('friends.accept'),
-                        primary: true,
-                        onTap: () => store.accept(request.id),
-                      ),
+                      _ActionIcon(icon: LucideIcons.check, label: t('friends.accept'), primary: true, onTap: () => store.accept(request.id)),
                       _ActionIcon(icon: LucideIcons.x, label: t('friends.decline'), onTap: () => store.cancelOrDecline(request.id)),
                     ],
                   ),
@@ -331,12 +326,8 @@ class _FriendsPanelState extends ConsumerState<FriendsPanel> {
                     _PersonRow(
                       person: friend,
                       onOpenProfile: openProfile,
-                      actions: [
-                        _ActionIcon(icon: LucideIcons.userMinus, label: t('friends.remove'), onTap: () => store.remove(friend.clerkId)),
-                      ],
-                      below: friends.watching[friend.clerkId] == null
-                          ? null
-                          : _FriendWatchingCard(watching: friends.watching[friend.clerkId]!),
+                      actions: [_ActionIcon(icon: LucideIcons.userMinus, label: t('friends.remove'), onTap: () => store.remove(friend.clerkId))],
+                      below: friends.watching[friend.clerkId] == null ? null : _FriendWatchingCard(watching: friends.watching[friend.clerkId]!),
                     ),
                 ],
               );

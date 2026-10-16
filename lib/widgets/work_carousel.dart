@@ -46,7 +46,7 @@ class WorkCarousel extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(heading, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w300, letterSpacing: 0.6)),
+                Text(heading, style: display(const TextStyle(fontSize: 24, fontWeight: FontWeight.w500, letterSpacing: -0.3))),
                 if (action != null) ...[const SizedBox(height: 12), action!],
               ],
             ),

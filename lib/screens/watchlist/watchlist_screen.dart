@@ -50,7 +50,7 @@ class WatchlistScreen extends ConsumerWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(t('watchlist.title'), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700, letterSpacing: -0.6)),
+                      Text(t('watchlist.title'), style: display(const TextStyle(fontSize: 30, fontWeight: FontWeight.w600, letterSpacing: -0.6))),
                       const SizedBox(height: 8),
                       Text(t('watchlist.subtitle', {'max': maxWatchlistItems}), style: TextStyle(fontSize: 14, color: AppColors.fg(0.5))),
                     ],
@@ -95,12 +95,7 @@ class WatchlistScreen extends ConsumerWidget {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(999),
                             boxShadow: [
-                              BoxShadow(
-                                color: Colors.white.withValues(alpha: 0.4),
-                                blurRadius: 20,
-                                spreadRadius: -4,
-                                offset: const Offset(0, 8),
-                              ),
+                              BoxShadow(color: Colors.white.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: -4, offset: const Offset(0, 8)),
                             ],
                           ),
                           child: Text(

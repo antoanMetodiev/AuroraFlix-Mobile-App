@@ -230,12 +230,8 @@ class _HeroDetails extends ConsumerWidget {
                   )
                 : Text(
                     record.title,
-                    style: const TextStyle(
-                      fontSize: 30,
-                      height: 1.05,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -1.5,
-                      color: Colors.white,
+                    style: display(
+                      const TextStyle(fontSize: 36, height: 1.02, fontWeight: FontWeight.w600, letterSpacing: -0.8, color: Colors.white),
                     ),
                   ),
           ),

@@ -74,7 +74,7 @@ class OrderSelectScreen extends ConsumerWidget {
         Text(
           t('order.selectTitle'),
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700, letterSpacing: -0.6),
+          style: display(const TextStyle(fontSize: 30, fontWeight: FontWeight.w600, letterSpacing: -0.6)),
         ),
         const SizedBox(height: 16),
         Text(
@@ -178,7 +178,7 @@ class _OrderFormScreenState extends ConsumerState<OrderFormScreen> {
         Text(
           isMovie ? t('order.orderMovie') : t('order.orderSeries'),
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700, letterSpacing: -0.6),
+          style: display(const TextStyle(fontSize: 30, fontWeight: FontWeight.w600, letterSpacing: -0.6)),
         ),
         const SizedBox(height: 48),
         Stack(
@@ -208,14 +208,7 @@ class _OrderFormScreenState extends ConsumerState<OrderFormScreen> {
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(color: _focus.hasFocus ? Colors.white : AppColors.fg(0.15), width: _focus.hasFocus ? 1.5 : 1),
                     boxShadow: _focus.hasFocus
-                        ? [
-                            BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.35),
-                              blurRadius: 28,
-                              spreadRadius: -6,
-                              offset: const Offset(0, 8),
-                            ),
-                          ]
+                        ? [BoxShadow(color: Colors.white.withValues(alpha: 0.35), blurRadius: 28, spreadRadius: -6, offset: const Offset(0, 8))]
                         : null,
                   ),
                   child: Row(

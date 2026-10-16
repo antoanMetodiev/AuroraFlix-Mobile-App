@@ -75,7 +75,7 @@ class CatalogScreen extends ConsumerWidget {
               if (query.search == null) DiscoverFiltersBar(query: query),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
-                child: Text(heading, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
+                child: Text(heading, style: display(const TextStyle(fontSize: 30, fontWeight: FontWeight.w600, letterSpacing: -0.5))),
               ),
               page.when(
                 loading: () => const Loader(minHeight: 320),

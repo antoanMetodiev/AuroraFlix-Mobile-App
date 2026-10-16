@@ -105,7 +105,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(t('subscription.title'), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700, letterSpacing: -0.6)),
+                  Text(t('subscription.title'), style: display(const TextStyle(fontSize: 30, fontWeight: FontWeight.w600, letterSpacing: -0.6))),
                   const SizedBox(height: 8),
                   Text(t('subscription.subtitle'), style: TextStyle(fontSize: 14, color: AppColors.fg(0.5))),
                   const SizedBox(height: 40),
@@ -144,9 +144,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: (info!.cancelAtPeriodEnd ? const Color(0xFFF59E0B) : const Color(0xFF10B981)).withValues(
-                                    alpha: 0.15,
-                                  ),
+                                  color: (info!.cancelAtPeriodEnd ? const Color(0xFFF59E0B) : const Color(0xFF10B981)).withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                                 child: Text(
@@ -163,9 +161,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                         if (isPro && periodEnd != null) ...[
                           const SizedBox(height: 16),
                           Text(
-                            info!.cancelAtPeriodEnd
-                                ? t('subscription.endsOn', {'date': periodEnd})
-                                : t('subscription.renewsOn', {'date': periodEnd}),
+                            info!.cancelAtPeriodEnd ? t('subscription.endsOn', {'date': periodEnd}) : t('subscription.renewsOn', {'date': periodEnd}),
                             style: TextStyle(fontSize: 14, color: AppColors.fg(0.6)),
                           ),
                         ],
@@ -189,17 +185,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(color: Colors.white.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8)),
-                                ],
+                                boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (isPro) ...[
-                                    const Icon(LucideIcons.creditCard, size: 16, color: AppColors.onWhite),
-                                    const SizedBox(width: 8),
-                                  ],
+                                  if (isPro) ...[const Icon(LucideIcons.creditCard, size: 16, color: AppColors.onWhite), const SizedBox(width: 8)],
                                   Text(
                                     isPro ? (_openingPortal ? t('pricing.redirecting') : t('subscription.manage')) : t('pricing.proCta'),
                                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.onWhite),

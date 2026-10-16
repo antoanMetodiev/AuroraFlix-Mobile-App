@@ -21,9 +21,7 @@ import 'similar_titles_section.dart';
 
 typedef _DetailsKey = ({RecordType type, String id});
 
-final _detailsProvider = FutureProvider.family<CinemaRecord?, _DetailsKey>(
-  (ref, key) => ref.watch(catalogApiProvider).details(key.type, key.id),
-);
+final _detailsProvider = FutureProvider.family<CinemaRecord?, _DetailsKey>((ref, key) => ref.watch(catalogApiProvider).details(key.type, key.id));
 
 /// A movie's or series' page (website: CinemaRecordDetailsPage): header,
 /// trailer, cast, images, the player (and episodes for a series), comments,
@@ -105,9 +103,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
           final poster = tmdbImage(record.backgroundImgURL ?? record.posterImgURL, TmdbSize.w1280);
           final videoUrl = record.isSeries
               ? (_episodeUrl ??
-                    ((record.videoURL?.isNotEmpty ?? false)
-                        ? record.videoURL!
-                        : (orderEpisodes(record.allEpisodes).firstOrNull?.videoURL ?? '')))
+                    ((record.videoURL?.isNotEmpty ?? false) ? record.videoURL! : (orderEpisodes(record.allEpisodes).firstOrNull?.videoURL ?? '')))
               : record.videoURL;
 
           // No top padding: the banner starts at the very top, under the
@@ -128,10 +124,10 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
                   if (videoUrl != null && (videoUrl.isNotEmpty || record.isSeries))
                     PlayerSection(key: _playerKey, videoUrl: videoUrl, title: record.title, poster: poster),
                   if (record.isSeries) EpisodesSection(key: _episodesKey, series: record, onSelect: _playEpisode),
+                  SimilarTitlesSection(record: record),
                   RevealOnScroll(
                     child: CommentsSection(recordId: record.id, type: record.type),
                   ),
-                  SimilarTitlesSection(record: record),
                   // Fades the background out into the footer's solid black.
                   const SizedBox(
                     height: 120,

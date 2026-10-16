@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../core/dates.dart';
 import '../core/i18n/locale.dart';
 import '../core/navigation.dart';
 import '../core/theme.dart';
@@ -15,8 +16,9 @@ import 'reveal.dart';
 
 /// Poster tile from the catalog grids (website: CinemaRecordCard, touch
 /// layout): poster with a dark vignette, rating badge top-right, watchlist
-/// and like buttons top-left (always visible — no hover on a phone), and the
-/// title with "Movie • 2026" along the bottom.
+/// and like buttons top-left (always visible — no hover on a phone), and
+/// along the bottom the title, its tagline, "Movie • 9 October 2026" and up
+/// to two genres.
 class CinemaRecordCard extends ConsumerWidget {
   const CinemaRecordCard({super.key, required this.record});
 
@@ -51,7 +53,10 @@ class CinemaRecordCard extends ConsumerWidget {
                         gradient: LinearGradient(
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
-                          colors: [Color(0xF2000000), Color(0x1A000000), Colors.transparent],
+                          // Solid at the bottom edge, still dark a third of the way up, clear
+                          // by two thirds — the text there reads on any poster (website: same).
+                          colors: [Color(0xFF000000), Color(0xBF000000), Colors.transparent],
+                          stops: [0, 0.35, 0.7],
                         ),
                       ),
                     ),
@@ -88,37 +93,85 @@ class CinemaRecordCard extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (record.specialText case final tagline? when tagline.isNotEmpty) ...[
+                            Text(
+                              tagline,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: display(
+                                TextStyle(
+                                  fontSize: 11,
+                                  fontStyle: FontStyle.italic,
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  shadows: const [Shadow(color: Color(0xCC000000), blurRadius: 2, offset: Offset(0, 1))],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                          ],
                           Text(
                             record.title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              height: 1.25,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                              shadows: [Shadow(color: Color(0xCC000000), blurRadius: 3, offset: Offset(0, 1))],
+                            style: display(
+                              const TextStyle(
+                                fontSize: 15,
+                                height: 1.2,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                shadows: [Shadow(color: Color(0xCC000000), blurRadius: 3, offset: Offset(0, 1))],
+                              ),
                             ),
                           ),
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              Icon(
-                                record.isSeries ? LucideIcons.tv : LucideIcons.film,
-                                size: 11,
-                                color: Colors.white.withValues(alpha: 0.8),
-                              ),
+                              Icon(record.isSeries ? LucideIcons.tv : LucideIcons.film, size: 11, color: Colors.white.withValues(alpha: 0.8)),
                               const SizedBox(width: 6),
                               Flexible(
                                 child: Text(
-                                  [record.isSeries ? t('watchlist.series') : t('watchlist.movie'), ?record.year].join('  •  '),
+                                  [
+                                    record.isSeries ? t('watchlist.series') : t('watchlist.movie'),
+                                    // The full date ("9 октомври 2026 г."), not just the year.
+                                    if (record.releaseDate != null) formatReleaseDate(record.releaseDate, ref.watch(localeProvider).name),
+                                  ].join('  •  '),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.6)),
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.6)),
                                 ),
                               ),
                             ],
                           ),
+                          if (record.genreList.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            // Up to two, kept to one line — a second that
+                            // doesn't fit is clipped rather than wrapping.
+                            SizedBox(
+                              height: 18,
+                              child: ClipRect(
+                                child: Wrap(
+                                  spacing: 4,
+                                  clipBehavior: Clip.hardEdge,
+                                  children: [
+                                    for (final genre in record.genreList.take(2))
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(alpha: 0.35),
+                                          borderRadius: BorderRadius.circular(999),
+                                          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                                        ),
+                                        child: Text(
+                                          t.genre(genre),
+                                          maxLines: 1,
+                                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.75)),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -165,7 +218,7 @@ class CinemaRecordGrid extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(t('common.noResults'), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
+              Text(t('common.noResults'), style: display(const TextStyle(fontSize: 30, fontWeight: FontWeight.w600, letterSpacing: -0.5))),
               const SizedBox(height: 8),
               Text(
                 t('common.noResultsDesc'),

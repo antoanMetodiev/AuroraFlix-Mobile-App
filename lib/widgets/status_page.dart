@@ -69,7 +69,7 @@ class NotFoundPage extends ConsumerWidget {
                       Text(
                         t('status.notFoundTitle'),
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700, letterSpacing: -0.6),
+                        style: display(const TextStyle(fontSize: 30, fontWeight: FontWeight.w600, letterSpacing: -0.6)),
                       ),
                       const SizedBox(height: 12),
                       Text(

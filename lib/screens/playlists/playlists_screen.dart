@@ -79,10 +79,7 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            t('playlists.title'),
-                            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700, letterSpacing: -0.6),
-                          ),
+                          Text(t('playlists.title'), style: display(const TextStyle(fontSize: 30, fontWeight: FontWeight.w600, letterSpacing: -0.6))),
                           if (playlists != null && playlists.isNotEmpty) ...[
                             const SizedBox(width: 12),
                             Container(

@@ -94,7 +94,7 @@ class _UserProfileModalState extends ConsumerState<_UserProfileModal> {
                 name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.6),
+                style: display(const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: -0.6)),
               ),
               const SizedBox(height: 4),
               Wrap(
@@ -107,9 +107,7 @@ class _UserProfileModalState extends ConsumerState<_UserProfileModal> {
                   ),
                   _Stat(
                     icon: LucideIcons.listVideo,
-                    label: canView && _playlists != null
-                        ? t('profile.playlistsCount', {'count': _playlists!.length})
-                        : t('profile.sharedPlaylists'),
+                    label: canView && _playlists != null ? t('profile.playlistsCount', {'count': _playlists!.length}) : t('profile.sharedPlaylists'),
                   ),
                 ],
               ),

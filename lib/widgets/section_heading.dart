@@ -37,7 +37,7 @@ class SectionHeading extends StatelessWidget {
           Flexible(
             child: Text(
               text,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.4, color: AppColors.foreground),
+              style: display(const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: -0.4, color: AppColors.foreground)),
             ),
           ),
         ],

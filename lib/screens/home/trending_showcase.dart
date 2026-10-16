@@ -109,7 +109,7 @@ class _ShowcaseBlock extends ConsumerWidget {
                     const SizedBox(height: 16),
                     Text(
                       heading,
-                      style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.75, color: Colors.white),
+                      style: display(const TextStyle(fontSize: 30, fontWeight: FontWeight.w600, letterSpacing: -0.6, color: Colors.white)),
                     ),
                     const SizedBox(height: 12),
                     Text(text, style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.6))),
@@ -312,9 +312,7 @@ class _PosterCard extends StatelessWidget {
           color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.9), blurRadius: 40, spreadRadius: -18, offset: const Offset(0, 18)),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.9), blurRadius: 40, spreadRadius: -18, offset: const Offset(0, 18))],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(15),

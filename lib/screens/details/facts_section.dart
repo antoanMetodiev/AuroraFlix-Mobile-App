@@ -56,6 +56,9 @@ const _languageNames = <String, Map<String, String>>{
 
 typedef _Tile = ({IconData icon, String label, String value});
 typedef _Person = ({String name, String? photo, String initials, List<String> jobs});
+
+/// Crew shown — any more and the card gets crowded (same as the website).
+const _maxCrew = 3;
 typedef _Page = ({Widget icon, String url, String label});
 
 /// The website's FactsSection, at phone width: the people behind the title
@@ -89,11 +92,7 @@ class FactsSection extends ConsumerWidget {
     final tiles = <_Tile>[
       if (text('originalTitle') case final value?) (icon: LucideIcons.clapperboard, label: t('facts.originalTitle'), value: value),
       if (language != null)
-        (
-          icon: LucideIcons.messageCircle,
-          label: t('facts.originalLanguage'),
-          value: _languageNames[language]?[locale] ?? language.toUpperCase(),
-        ),
+        (icon: LucideIcons.messageCircle, label: t('facts.originalLanguage'), value: _languageNames[language]?[locale] ?? language.toUpperCase()),
       if (number('budget') case final value?) (icon: LucideIcons.creditCard, label: t('facts.budget'), value: usd.format(value)),
       if (number('revenue') case final value?) (icon: LucideIcons.flame, label: t('facts.revenue'), value: usd.format(value)),
       if (networks.isNotEmpty) (icon: LucideIcons.tv, label: t('facts.networks'), value: networks.join(', ')),
@@ -118,18 +117,13 @@ class FactsSection extends ConsumerWidget {
     ];
     final iconColor = AppColors.fg(0.8);
     final pages = <_Page>[
-      if (text('homepage') case final value?)
-        (icon: Icon(LucideIcons.globe, size: 15, color: iconColor), url: value, label: t('facts.homepage')),
+      if (text('homepage') case final value?) (icon: Icon(LucideIcons.globe, size: 15, color: iconColor), url: value, label: t('facts.homepage')),
       if (text('imdbId') case final value?)
         (icon: FaIcon(FontAwesomeIcons.imdb, size: 15, color: iconColor), url: 'https://www.imdb.com/title/$value/', label: 'IMDb'),
       if (text('facebookId') case final value?)
         (icon: FaIcon(FontAwesomeIcons.facebook, size: 15, color: iconColor), url: 'https://www.facebook.com/$value', label: 'Facebook'),
       if (text('instagramId') case final value?)
-        (
-          icon: FaIcon(FontAwesomeIcons.instagram, size: 15, color: iconColor),
-          url: 'https://www.instagram.com/$value/',
-          label: 'Instagram',
-        ),
+        (icon: FaIcon(FontAwesomeIcons.instagram, size: 15, color: iconColor), url: 'https://www.instagram.com/$value/', label: 'Instagram'),
       if (text('twitterId') case final value?)
         (icon: FaIcon(FontAwesomeIcons.twitter, size: 15, color: iconColor), url: 'https://x.com/$value', label: 'X'),
       if (text('youtubeId') case final value?)
@@ -168,10 +162,17 @@ class FactsSection extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(t('facts.crew').toUpperCase(), style: eyebrow),
-                  for (final person in crew)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: _PersonRow(person: person),
+                  const SizedBox(height: 4),
+                  // At most three, as a list with thin dividers between them.
+                  for (var i = 0; i < crew.length && i < _maxCrew; i++)
+                    Container(
+                      padding: EdgeInsets.only(top: 12, bottom: i == crew.length - 1 || i == _maxCrew - 1 ? 0 : 12),
+                      decoration: i == 0
+                          ? null
+                          : BoxDecoration(
+                              border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
+                            ),
+                      child: _PersonRow(person: crew[i]),
                     ),
                 ],
               ),
@@ -319,9 +320,7 @@ class _FactTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(color: Colors.white.withValues(alpha: 0.5), blurRadius: 20, spreadRadius: -6, offset: const Offset(0, 6)),
-                  ],
+                  boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.5), blurRadius: 20, spreadRadius: -6, offset: const Offset(0, 6))],
                 ),
                 child: Icon(tile.icon, size: 18, color: AppColors.onWhite),
               ),

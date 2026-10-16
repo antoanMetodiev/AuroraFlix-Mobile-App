@@ -43,7 +43,35 @@ ThemeData buildAppTheme() {
     highlightColor: Colors.transparent,
   );
 
-  return base.copyWith(
-    textTheme: GoogleFonts.geistTextTheme(base.textTheme).apply(bodyColor: AppColors.foreground, displayColor: AppColors.foreground),
-  );
+  final textTheme = GoogleFonts.manropeTextTheme(base.textTheme).apply(bodyColor: AppColors.foreground, displayColor: AppColors.foreground);
+  return base.copyWith(textTheme: _withoutLocalizedForms(textTheme));
 }
+
+/// The website's typography: Manrope for running text and UI (the theme
+/// above), and Noto Serif Display — this — for the big "cinematic" type:
+/// page / section / movie titles, taglines and card titles (website:
+/// `font-display`). Both have Cyrillic and Greek.
+TextStyle display(TextStyle style) => GoogleFonts.notoSerifDisplay(textStyle: style.copyWith(fontFeatures: _noLocl));
+
+/// With a Bulgarian locale the fonts switch to their localized Bulgarian
+/// Cyrillic (cursive-looking д, т, и, л…); the website turns that off
+/// (`"locl" 0`) for the standard shapes, and so does the app.
+const _noLocl = [FontFeature.disable('locl')];
+
+TextTheme _withoutLocalizedForms(TextTheme theme) => theme.copyWith(
+  displayLarge: theme.displayLarge?.copyWith(fontFeatures: _noLocl),
+  displayMedium: theme.displayMedium?.copyWith(fontFeatures: _noLocl),
+  displaySmall: theme.displaySmall?.copyWith(fontFeatures: _noLocl),
+  headlineLarge: theme.headlineLarge?.copyWith(fontFeatures: _noLocl),
+  headlineMedium: theme.headlineMedium?.copyWith(fontFeatures: _noLocl),
+  headlineSmall: theme.headlineSmall?.copyWith(fontFeatures: _noLocl),
+  titleLarge: theme.titleLarge?.copyWith(fontFeatures: _noLocl),
+  titleMedium: theme.titleMedium?.copyWith(fontFeatures: _noLocl),
+  titleSmall: theme.titleSmall?.copyWith(fontFeatures: _noLocl),
+  bodyLarge: theme.bodyLarge?.copyWith(fontFeatures: _noLocl),
+  bodyMedium: theme.bodyMedium?.copyWith(fontFeatures: _noLocl),
+  bodySmall: theme.bodySmall?.copyWith(fontFeatures: _noLocl),
+  labelLarge: theme.labelLarge?.copyWith(fontFeatures: _noLocl),
+  labelMedium: theme.labelMedium?.copyWith(fontFeatures: _noLocl),
+  labelSmall: theme.labelSmall?.copyWith(fontFeatures: _noLocl),
+);
