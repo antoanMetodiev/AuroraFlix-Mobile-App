@@ -114,6 +114,21 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
     }
   }
 
+  /// Leaving the page — another tab, or a screen pushed on top (both keep
+  /// this one alive offstage) — resets the player to its Play button, so
+  /// nothing keeps playing out of sight and "watching" isn't shown to
+  /// friends. A fullscreen video also covers the page, but that's still
+  /// watching it.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_hasStarted && !TickerMode.valuesOf(context).enabled && !isEmbedFullscreen) {
+      _hasStarted = false;
+      _frameLoading = true;
+      _stopVidlinkWatchdog();
+    }
+  }
+
   @override
   void dispose() {
     _stopVidlinkWatchdog();

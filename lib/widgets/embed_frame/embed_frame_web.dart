@@ -7,6 +7,10 @@ import 'package:web/web.dart' as web;
 
 int _nextViewId = 0;
 
+/// Native builds push a route for a fullscreen video; the browser's own
+/// fullscreen doesn't, so nothing ever needs to wait for it here.
+bool get isEmbedFullscreen => false;
+
 /// Browser build: a plain <iframe>, exactly as the website renders it.
 class EmbedFrame extends StatefulWidget {
   const EmbedFrame({super.key, required this.url, this.sandbox, this.uiScale = 1, this.onLoaded, this.onMessage});
@@ -28,6 +32,21 @@ class EmbedFrame extends StatefulWidget {
 class _EmbedFrameState extends State<EmbedFrame> {
   late final String _viewType = 'aurora-embed-${_nextViewId++}';
   StreamSubscription<web.MessageEvent>? _messages;
+  web.HTMLIFrameElement? _iframe;
+
+  /// Whether this embed's page is the one on screen — every tab (and a page
+  /// under a pushed one) stays alive offstage, so leaving the page blanks
+  /// the iframe and coming back loads the embed afresh.
+  bool _onScreen = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final onScreen = TickerMode.valuesOf(context).enabled;
+    if (onScreen == _onScreen) return;
+    _onScreen = onScreen;
+    _iframe?.src = onScreen ? widget.url : 'about:blank';
+  }
 
   @override
   void initState() {
@@ -41,6 +60,7 @@ class _EmbedFrameState extends State<EmbedFrame> {
         ..allowFullscreen = true
         ..setAttribute('scrolling', 'no');
       if (widget.sandbox != null) iframe.setAttribute('sandbox', widget.sandbox!);
+      _iframe = iframe;
 
       final percent = '${100 / widget.uiScale}%';
       iframe.style
@@ -73,6 +93,7 @@ class _EmbedFrameState extends State<EmbedFrame> {
   @override
   void dispose() {
     _messages?.cancel();
+    _iframe?.src = 'about:blank';
     super.dispose();
   }
 

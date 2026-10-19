@@ -75,8 +75,42 @@ class EmbedFrame extends StatefulWidget {
   State<EmbedFrame> createState() => _EmbedFrameState();
 }
 
+/// How many embeds are showing their video fullscreen right now. That pushes
+/// a route over the whole app, which takes every screen below it offstage
+/// exactly like leaving the page does — callers that stop players when
+/// their page goes offstage must leave them alone then.
+int _fullscreenEmbeds = 0;
+
+bool get isEmbedFullscreen => _fullscreenEmbeds > 0;
+
+String get _blankPage => '<!DOCTYPE html><html><body style="margin:0;background:#000"></body></html>';
+
 class _EmbedFrameState extends State<EmbedFrame> {
   late final WebViewController _controller = _createController();
+
+  /// Whether this embed's page is the one on screen. Every tab stays alive
+  /// (StatefulShellRoute), and a page under a pushed one stays alive too —
+  /// both just go offstage, and a WebView keeps playing there. So leaving
+  /// the page empties the WebView, and coming back loads the embed afresh.
+  bool _onScreen = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final onScreen = TickerMode.valuesOf(context).enabled;
+    if (onScreen == _onScreen || _fullscreen) return;
+    _onScreen = onScreen;
+    if (onScreen) {
+      _loadHostPage(_controller);
+    } else {
+      _controller.loadHtmlString(_blankPage, baseUrl: _hostUrl);
+    }
+  }
+
+  void _loadHostPage(WebViewController controller) => controller.loadHtmlString(
+    _hostPage(url: widget.url, sandbox: widget.sandbox, uiScale: widget.uiScale),
+    baseUrl: _hostUrl,
+  );
 
   WebViewController _createController() {
     final PlatformWebViewControllerCreationParams params = WebViewPlatform.instance is WebKitWebViewPlatform
@@ -102,10 +136,7 @@ class _EmbedFrameState extends State<EmbedFrame> {
       platform.setCustomWidgetCallbacks(onShowCustomWidget: _showFullscreen, onHideCustomWidget: _hideFullscreen);
     }
 
-    controller.loadHtmlString(
-      _hostPage(url: widget.url, sandbox: widget.sandbox, uiScale: widget.uiScale),
-      baseUrl: _hostUrl,
-    );
+    _loadHostPage(controller);
     return controller;
   }
 
@@ -123,6 +154,7 @@ class _EmbedFrameState extends State<EmbedFrame> {
   bool _fullscreen = false;
 
   Future<void> _showFullscreen(Widget video, void Function() onHidden) async {
+    if (!_fullscreen) _fullscreenEmbeds++;
     _fullscreen = true;
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     await SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
@@ -164,6 +196,7 @@ class _EmbedFrameState extends State<EmbedFrame> {
   void _hideFullscreen() {
     if (!_fullscreen) return;
     _fullscreen = false;
+    _fullscreenEmbeds--;
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     final navigator = Navigator.of(context, rootNavigator: true);
@@ -173,9 +206,13 @@ class _EmbedFrameState extends State<EmbedFrame> {
   @override
   void dispose() {
     if (_fullscreen) {
+      _fullscreenEmbeds--;
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     }
+    // The native WebView can outlive this widget for a while — empty it so
+    // nothing keeps playing in the background.
+    _controller.loadHtmlString(_blankPage, baseUrl: _hostUrl);
     super.dispose();
   }
 
