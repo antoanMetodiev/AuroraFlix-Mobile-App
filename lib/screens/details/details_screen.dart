@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/catalog_api.dart';
 import '../../core/library/last_viewed.dart';
+import '../../core/slow_scroll.dart';
 import '../../core/theme.dart';
 import '../../core/tmdb.dart';
 import '../../models/models.dart';
@@ -36,8 +37,9 @@ class DetailsScreen extends ConsumerStatefulWidget {
   ConsumerState<DetailsScreen> createState() => _DetailsScreenState();
 }
 
-class _DetailsScreenState extends ConsumerState<DetailsScreen> {
+class _DetailsScreenState extends ConsumerState<DetailsScreen> with SingleTickerProviderStateMixin {
   final _scroll = ScrollController();
+  late final _slowScroll = SlowScroller(this);
   final _playerKey = GlobalKey();
   final _episodesKey = GlobalKey();
   bool _tracked = false;
@@ -48,8 +50,15 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
 
   @override
   void dispose() {
+    _slowScroll.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// The header's "Watch now" / "Go to episodes": a slow glide down to the
+  /// player, which lands just under the floating header.
+  void _glideToPlayer() {
+    _slowScroll.scrollTo(_scroll, _playerKey, topInset: shellContentPadding(context).top + 8);
   }
 
   void _playEpisode(Episode episode) {
@@ -102,47 +111,48 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
 
           final poster = tmdbImage(record.backgroundImgURL ?? record.posterImgURL, TmdbSize.w1280);
           final videoUrl = record.isSeries
-              ? (_episodeUrl ??
-                    ((record.videoURL?.isNotEmpty ?? false) ? record.videoURL! : (orderEpisodes(record.allEpisodes).firstOrNull?.videoURL ?? '')))
+              ? (_episodeUrl ?? ((record.videoURL?.isNotEmpty ?? false) ? record.videoURL! : (orderEpisodes(record.allEpisodes).firstOrNull?.videoURL ?? '')))
               : record.videoURL;
+
+          final canWatch = videoUrl != null && videoUrl.isNotEmpty;
 
           // No top padding: the banner starts at the very top, under the
           // floating header (DetailsHeader adds the header's height to it).
+
           return Stack(
             children: [
               Positioned.fill(child: DetailsBackground(record: record)),
-              ListView(
-                controller: _scroll,
-                padding: shellContentPadding(context).copyWith(top: 0),
-                children: [
-                  DetailsHeader(record: record),
-                  FactsSection(record: record),
-                  if (record.trailerURL != null && record.trailerURL!.isNotEmpty)
-                    RevealOnScroll(child: TrailerSection(trailerUrl: record.trailerURL!)),
-                  CastSection(cast: record.castList, backgroundPath: detailsBackgroundPath(record)),
-                  RevealOnScroll(child: ImageGallery(images: record.imagesList)),
-                  if (videoUrl != null && (videoUrl.isNotEmpty || record.isSeries))
-                    PlayerSection(key: _playerKey, videoUrl: videoUrl, title: record.title, poster: poster),
-                  if (record.isSeries) EpisodesSection(key: _episodesKey, series: record, onSelect: _playEpisode),
-                  SimilarTitlesSection(record: record),
-                  RevealOnScroll(
-                    child: CommentsSection(recordId: record.id, type: record.type),
-                  ),
-                  // Fades the background out into the footer's solid black.
-                  const SizedBox(
-                    height: 120,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, AppColors.background],
+              // Any touch takes over from a running "Watch now" glide.
+              Listener(
+                onPointerDown: (_) => _slowScroll.cancel(),
+                child: ListView(
+                  controller: _scroll,
+                  padding: shellContentPadding(context).copyWith(top: 0),
+                  children: [
+                    DetailsHeader(record: record, onWatch: canWatch ? _glideToPlayer : null),
+                    FactsSection(record: record),
+                    if (record.trailerURL != null && record.trailerURL!.isNotEmpty) RevealOnScroll(child: TrailerSection(trailerUrl: record.trailerURL!)),
+                    CastSection(cast: record.castList, backgroundPath: detailsBackgroundPath(record)),
+                    RevealOnScroll(child: ImageGallery(images: record.imagesList)),
+                    if (videoUrl != null && (videoUrl.isNotEmpty || record.isSeries))
+                      PlayerSection(key: _playerKey, videoUrl: videoUrl, title: record.title, poster: poster),
+                    if (record.isSeries) EpisodesSection(key: _episodesKey, series: record, onSelect: _playEpisode),
+                    SimilarTitlesSection(record: record),
+                    RevealOnScroll(
+                      child: CommentsSection(recordId: record.id, type: record.type),
+                    ),
+                    // Fades the background out into the footer's solid black.
+                    const SizedBox(
+                      height: 120,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, AppColors.background]),
                         ),
                       ),
                     ),
-                  ),
-                  const SiteFooter(),
-                ],
+                    const SiteFooter(),
+                  ],
+                ),
               ),
             ],
           );

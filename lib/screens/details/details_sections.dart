@@ -16,15 +16,20 @@ import '../../widgets/rating_ring.dart';
 import '../../widgets/record_actions.dart';
 import '../../widgets/reveal.dart';
 import '../../widgets/section_heading.dart';
+import '../../widgets/watch_now_button.dart';
 
 /// The top of a title page (website: DetailsHeader): a cinematic backdrop
 /// banner with the title, year, tagline, genre chips, date and rating ring
 /// over layered gradients; below it the poster, the overview and the
 /// watchlist / like buttons.
 class DetailsHeader extends ConsumerWidget {
-  const DetailsHeader({super.key, required this.record});
+  const DetailsHeader({super.key, required this.record, this.onWatch});
 
   final CinemaRecord record;
+
+  /// Glides down to the player; null hides the "Watch now" button (nothing
+  /// to play).
+  final VoidCallback? onWatch;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -196,10 +201,13 @@ class DetailsHeader extends ConsumerWidget {
                     Text(record.description!, style: TextStyle(fontSize: 16, height: 1.75, color: AppColors.fg(0.8))),
                     const SizedBox(height: 12),
                   ],
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
+                      if (onWatch != null) WatchNowButton(isSeries: record.isSeries, onTap: onWatch!),
                       WatchlistButton(record: record),
-                      const SizedBox(width: 8),
                       LikeButton(record: record),
                     ],
                   ),
@@ -283,12 +291,8 @@ class CastSection extends ConsumerWidget {
                   clipBehavior: Clip.none,
                   itemCount: cast.length,
                   separatorBuilder: (context, index) => const SizedBox(width: 16),
-                  itemBuilder: (context, index) => _ActorCard(
-                    actor: cast[index],
-                    backgroundPath: backgroundPath,
-                    width: cardWidth,
-                    ageLabel: (age) => t('actor.ageShort', {'age': age}),
-                  ),
+                  itemBuilder: (context, index) =>
+                      _ActorCard(actor: cast[index], backgroundPath: backgroundPath, width: cardWidth, ageLabel: (age) => t('actor.ageShort', {'age': age})),
                 ),
               ),
             ],
@@ -428,8 +432,7 @@ class _ImageGalleryState extends ConsumerState<ImageGallery> {
                     value: _type,
                     labels: {ImageType.backdrop: t('sections.backdrops'), ImageType.poster: t('sections.posters')},
                     counts: {
-                      for (final type in const [ImageType.backdrop, ImageType.poster])
-                        type: widget.images.where((image) => image.imageType == type).length,
+                      for (final type in const [ImageType.backdrop, ImageType.poster]) type: widget.images.where((image) => image.imageType == type).length,
                     },
                     onChanged: (type) => setState(() {
                       _type = type;
