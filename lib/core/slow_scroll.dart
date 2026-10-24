@@ -4,7 +4,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
-/// A slow, smooth in-page jump (website: lib/smooth-scroll.ts) — a long
+/// A quick, smooth in-page jump (website: lib/smooth-scroll.ts) — a short
 /// ease-in-out whose duration grows with the distance.
 ///
 /// The target usually sits in a lazily built ListView, so it may not exist
@@ -16,11 +16,11 @@ class SlowScroller {
     _ticker = vsync.createTicker(_tick);
   }
 
-  static const _minDurationMs = 2200.0;
-  static const _maxDurationMs = 4500.0;
-  static const _msPerPixel = 1.2;
+  static const _minDurationMs = 700.0;
+  static const _maxDurationMs = 1300.0;
+  static const _msPerPixel = 0.4;
   static const _cruiseSpeed = 1 / _msPerPixel; // px per ms
-  static const _accelerationMs = 900.0;
+  static const _accelerationMs = 300.0;
 
   late final Ticker _ticker;
   ScrollController? _controller;
@@ -80,7 +80,7 @@ class SlowScroller {
         ? (distance.abs() * _msPerPixel).clamp(_minDurationMs, _maxDurationMs)
         // Ease-out-cubic starts at 3·distance/duration px/ms — pick the
         // duration that keeps the speed the glide already had.
-        : math.max(700, 3 * distance.abs() / math.max(_speed, 0.05));
+        : math.max(350, 3 * distance.abs() / math.max(_speed, 0.05));
   }
 
   void _tick(Duration elapsed) {
