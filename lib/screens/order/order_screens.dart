@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/api/catalog_api.dart';
+import '../../core/api/catalog_cache.dart';
 import '../../core/i18n/locale.dart';
 import '../../core/theme.dart';
 import '../../models/models.dart';
@@ -13,6 +14,7 @@ import '../../shell/app_shell.dart';
 import '../../widgets/footer.dart';
 import '../../widgets/loader.dart';
 import '../../widgets/pressable.dart';
+import '../catalog/catalog_screen.dart';
 
 /// Centered page body that fills the screen above the footer — both order
 /// pages use it (website: `min-h-[calc(100vh-4rem)]` centered column).
@@ -152,6 +154,12 @@ class _OrderFormScreenState extends ConsumerState<OrderFormScreen> {
       _status = _Status.sending;
     });
     final ok = await ref.read(catalogApiProvider).order(widget.type, title);
+    if (ok) {
+      // The lists drop what they have and stay near-uncached for a while,
+      // so the ordered title appears there as soon as it's added.
+      markCatalogFresh();
+      ref.invalidate(catalogPageProvider);
+    }
     await ref.read(sharedPreferencesProvider).setInt(_cooldownKey, DateTime.now().millisecondsSinceEpoch + _cooldownSeconds * 1000);
     if (!mounted) return;
     setState(() {

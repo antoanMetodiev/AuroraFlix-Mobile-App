@@ -1,21 +1,47 @@
 import 'package:flutter/material.dart';
 
-import '../../core/config.dart';
-import '../../models/models.dart';
-import '../details/details_background.dart';
-
-/// The movies / series lists' background — the website's ListBackground: a
-/// fixed still of their own (genre and title-search results included) under
-/// the same blur, shade and vignette as the details screen's background.
-///
-/// Loaded from the website rather than bundled, so changing it never needs a
-/// new build — Shorebird patches can't add assets.
+/// The movies / series lists' background — the website's ListBackground (genre
+/// and title-search results included): no image, just a soft dark gradient —
+/// a faint charcoal glow at the top melting into black, with a vignette.
 class ListBackground extends StatelessWidget {
-  const ListBackground({super.key, required this.type});
-
-  final RecordType type;
+  const ListBackground({super.key});
 
   @override
-  Widget build(BuildContext context) =>
-      BlurredPageBackdrop(url: type == RecordType.movie ? '$siteUrl/movie-background-image.webp' : '$siteUrl/series-background-image.webp');
+  Widget build(BuildContext context) {
+    return const Stack(
+      fit: StackFit.expand,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF161616), Color(0xFF080808), Color(0xFF000000)],
+            ),
+          ),
+        ),
+        // The site's faint white glow from the top centre.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.topCenter,
+              radius: 0.9,
+              colors: [Color(0x0FFFFFFF), Color(0x00FFFFFF)],
+              stops: [0, 0.7],
+            ),
+          ),
+        ),
+        // Vignette toward the edges.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              radius: 1.1,
+              colors: [Color(0x00000000), Color(0xD9000000)],
+              stops: [0.4, 1],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

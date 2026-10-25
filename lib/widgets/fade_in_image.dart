@@ -2,13 +2,23 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import 'package:visibility_detector/visibility_detector.dart';
+
 import '../core/theme.dart';
 
 /// Network image that shows a soft shimmer while loading and fades in once
 /// it's there — the website's FadeInImage + SHIMMER_BLUR_DATA_URL. Cached on
 /// disk, so a poster seen once never re-downloads.
 class AuroraImage extends StatelessWidget {
-  const AuroraImage({super.key, required this.url, this.fit = BoxFit.cover, this.alignment = Alignment.center, this.width, this.height});
+  const AuroraImage({
+    super.key,
+    required this.url,
+    this.fit = BoxFit.cover,
+    this.alignment = Alignment.center,
+    this.width,
+    this.height,
+    this.lazy = false,
+  });
 
   final String? url;
   final BoxFit fit;
@@ -16,10 +26,20 @@ class AuroraImage extends StatelessWidget {
   final double? width;
   final double? height;
 
+  /// Hold off downloading until the image is actually on screen — the
+  /// website's loading="lazy", for long grids built all at once (a Wrap),
+  /// where most posters start far below the fold. The shimmer shows until then.
+  final bool lazy;
+
   @override
   Widget build(BuildContext context) {
     final source = url;
     if (source == null || source.isEmpty) return const Shimmer();
+    if (lazy) return _LazyLoad(child: _image(source));
+    return _image(source);
+  }
+
+  Widget _image(String source) {
 
     // In the browser (where the app is tested), an image the website already
     // loaded sits in Chrome's cache without its CORS header, so the CORS
@@ -62,6 +82,34 @@ class AuroraImage extends StatelessWidget {
       fadeInCurve: auroraEase,
       placeholder: (context, url) => const Shimmer(),
       errorWidget: (context, url, error) => ColoredBox(color: AppColors.fg(0.05)),
+    );
+  }
+}
+
+/// Shows a [Shimmer] until any part of [child]'s box is on screen, then
+/// [child] for good (it isn't unloaded again on scrolling away).
+class _LazyLoad extends StatefulWidget {
+  const _LazyLoad({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_LazyLoad> createState() => _LazyLoadState();
+}
+
+class _LazyLoadState extends State<_LazyLoad> {
+  final _key = UniqueKey();
+  bool _visible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_visible) return widget.child;
+    return VisibilityDetector(
+      key: _key,
+      onVisibilityChanged: (info) {
+        if (!_visible && mounted && info.visibleFraction > 0) setState(() => _visible = true);
+      },
+      child: const Shimmer(),
     );
   }
 }

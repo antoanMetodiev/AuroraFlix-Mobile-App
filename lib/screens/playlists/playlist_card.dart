@@ -276,6 +276,8 @@ class _PlaylistCardState extends ConsumerState<PlaylistCard> {
                                             width: width,
                                             child: LibraryPosterTile(
                                               item: item,
+                                              // Every playlist starts expanded, so most tiles sit below the fold.
+                                              lazy: true,
                                               removeLabel: t('playlists.removeItemAria'),
                                               onRemove: widget.canManage ? () => _remove(item.id) : null,
                                             ),
@@ -582,9 +584,12 @@ class _PillTextFieldState extends State<PillTextField> {
 /// Poster tile for a saved title (playlist item, a friend's like): rating
 /// badge, title and type icon; an optional remove ✕.
 class LibraryPosterTile extends StatelessWidget {
-  const LibraryPosterTile({super.key, required this.item, this.removeLabel = '', this.onRemove});
+  const LibraryPosterTile({super.key, required this.item, this.removeLabel = '', this.onRemove, this.lazy = false});
 
   final LibraryItem item;
+
+  /// Load the poster only once it's on screen (see AuroraImage.lazy).
+  final bool lazy;
   final String removeLabel;
   final VoidCallback? onRemove;
 
@@ -609,7 +614,7 @@ class LibraryPosterTile extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  AuroraImage(url: tmdbImage(item.posterImgURL, TmdbSize.w500)),
+                  AuroraImage(url: tmdbImage(item.posterImgURL, TmdbSize.w500), lazy: lazy),
                   const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(

@@ -115,10 +115,11 @@ class WatchlistScreen extends ConsumerWidget {
                       spacing: 16,
                       runSpacing: 16,
                       children: [
-                        for (final item in items)
+                        for (var i = 0; i < items.length; i++)
                           SizedBox(
                             width: width,
-                            child: _WatchlistTile(item: item),
+                            // The first two rows load right away, the rest as they scroll in.
+                            child: _WatchlistTile(item: items[i], lazy: i >= 4),
                           ),
                       ],
                     );
@@ -134,9 +135,10 @@ class WatchlistScreen extends ConsumerWidget {
 }
 
 class _WatchlistTile extends ConsumerWidget {
-  const _WatchlistTile({required this.item});
+  const _WatchlistTile({required this.item, this.lazy = false});
 
   final LibraryItem item;
+  final bool lazy;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -158,7 +160,7 @@ class _WatchlistTile extends ConsumerWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              AuroraImage(url: tmdbImage(item.posterImgURL, TmdbSize.w500)),
+              AuroraImage(url: tmdbImage(item.posterImgURL, TmdbSize.w500), lazy: lazy),
               const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(

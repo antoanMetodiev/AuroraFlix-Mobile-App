@@ -6,19 +6,53 @@ import 'watchlist.dart';
 /// A title's current name and poster in the app's language.
 typedef LocalizedTitle = ({String title, String? posterImgURL});
 
-/// `movie|1,2,3` / `series|4,5` → each TMDB id's current title and poster
-/// (GET /get-movie-titles, /get-series-titles — the ApiClient adds ?lang and
-/// is rebuilt on a language switch, so this refetches in the new language).
+/// How long ids are collected before one request goes out. Lists on a
+/// screen get their items at slightly different moments (each playlist loads
+/// its own), so a short window — not just the same frame — lets them share
+/// a call. The saved copies show meanwhile (the website does the same).
+const _batchWindow = Duration(milliseconds: 50);
+
+/// Merges the lookups of every list asking within [_batchWindow] of the
+/// first into one request per kind (GET /get-movie-titles,
+/// /get-series-titles), instead of one per list.
+class _TitleBatcher {
+  _TitleBatcher(this._api);
+
+  final ApiClient _api;
+  final _pending = <String, ({Set<String> ids, Future<Map<String, LocalizedTitle>> rows})>{};
+
+  /// Resolves with all of that request's titles (other lists' ones included).
+  Future<Map<String, LocalizedTitle>> load(String kind, Iterable<String> ids) {
+    var batch = _pending[kind];
+    if (batch == null) {
+      final collected = <String>{};
+      final rows = Future<void>.delayed(_batchWindow).then((_) async {
+        _pending.remove(kind);
+        final data = await _api.getJson(kind == 'movie' ? '/get-movie-titles' : '/get-series-titles', {'ids': collected.join(',')});
+        return {
+          for (final row in ApiClient.unwrapList(data))
+            if (row['tmdbId'] is String && row['title'] is String)
+              row['tmdbId'] as String: (title: row['title'] as String, posterImgURL: row['posterImgURL'] as String?),
+        };
+      });
+      batch = _pending[kind] = (ids: collected, rows: rows);
+    }
+    batch.ids.addAll(ids);
+    return batch.rows;
+  }
+}
+
+/// Rebuilt with the ApiClient — i.e. on a language switch, which adds ?lang.
+final _titleBatcherProvider = Provider<_TitleBatcher>((ref) => _TitleBatcher(ref.watch(apiClientProvider)));
+
+/// `movie|1,2,3` / `series|4,5` → each TMDB id's current title and poster,
+/// fetched together with whatever other lists ask at the same time (and
+/// refetched in the new language after a switch).
 final _titlesProvider = FutureProvider.family<Map<String, LocalizedTitle>, String>((ref, key) async {
   final separator = key.indexOf('|');
   final kind = key.substring(0, separator);
-  final ids = key.substring(separator + 1);
-  final data = await ref.watch(apiClientProvider).getJson(kind == 'movie' ? '/get-movie-titles' : '/get-series-titles', {'ids': ids});
-  return {
-    for (final row in ApiClient.unwrapList(data))
-      if (row['tmdbId'] is String && row['title'] is String)
-        row['tmdbId'] as String: (title: row['title'] as String, posterImgURL: row['posterImgURL'] as String?),
-  };
+  final ids = key.substring(separator + 1).split(',');
+  return ref.watch(_titleBatcherProvider).load(kind, ids);
 });
 
 /// The watchlist, playlists, likes and last-viewed keep a copy of each

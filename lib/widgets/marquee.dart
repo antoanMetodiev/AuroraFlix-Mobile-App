@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 /// Endless sliding strip — the site's `.animate-marquee*` rows and columns.
 /// The items are laid out twice back to back and slid by exactly one copy's
 /// length per [period], so the loop has no seam. [reverse] runs it the other
-/// way. Holding a finger on it pauses it (the site pauses on hover).
+/// way. Holding a finger on it pauses it (the site pauses on hover), and so
+/// does scrolling it off screen.
 class Marquee extends StatefulWidget {
   const Marquee({
     super.key,
@@ -49,9 +51,27 @@ class _MarqueeState extends State<Marquee> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  void _pause() => _controller.stop();
+  final _visibilityKey = UniqueKey();
+  bool _held = false;
+  bool _onScreen = true;
+
+  /// Runs only while on screen and not held down.
+  void _sync() {
+    if (_held || !_onScreen) {
+      _controller.stop();
+    } else if (!_controller.isAnimating) {
+      _controller.repeat();
+    }
+  }
+
+  void _pause() {
+    _held = true;
+    _sync();
+  }
+
   void _resume() {
-    if (!_controller.isAnimating) _controller.repeat();
+    _held = false;
+    _sync();
   }
 
   @override
@@ -73,25 +93,33 @@ class _MarqueeState extends State<Marquee> with SingleTickerProviderStateMixin {
           ),
     ];
 
-    return Listener(
-      onPointerDown: (_) => _pause(),
-      onPointerUp: (_) => _resume(),
-      onPointerCancel: (_) => _resume(),
-      child: ClipRect(
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            final progress = widget.reverse ? 1 - _controller.value : _controller.value;
-            final shift = -progress * copyLength;
-            return Transform.translate(offset: horizontal ? Offset(shift, 0) : Offset(0, shift), child: child);
-          },
-          child: OverflowBox(
-            alignment: horizontal ? Alignment.centerLeft : Alignment.topCenter,
-            maxWidth: horizontal ? double.infinity : null,
-            maxHeight: horizontal ? null : double.infinity,
-            child: horizontal
-                ? Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: items)
-                : Column(mainAxisSize: MainAxisSize.min, children: items),
+    return VisibilityDetector(
+      key: _visibilityKey,
+      onVisibilityChanged: (info) {
+        if (!mounted) return;
+        _onScreen = info.visibleFraction > 0;
+        _sync();
+      },
+      child: Listener(
+        onPointerDown: (_) => _pause(),
+        onPointerUp: (_) => _resume(),
+        onPointerCancel: (_) => _resume(),
+        child: ClipRect(
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              final progress = widget.reverse ? 1 - _controller.value : _controller.value;
+              final shift = -progress * copyLength;
+              return Transform.translate(offset: horizontal ? Offset(shift, 0) : Offset(0, shift), child: child);
+            },
+            child: OverflowBox(
+              alignment: horizontal ? Alignment.centerLeft : Alignment.topCenter,
+              maxWidth: horizontal ? double.infinity : null,
+              maxHeight: horizontal ? null : double.infinity,
+              child: horizontal
+                  ? Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: items)
+                  : Column(mainAxisSize: MainAxisSize.min, children: items),
+            ),
           ),
         ),
       ),

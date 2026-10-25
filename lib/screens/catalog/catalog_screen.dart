@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/catalog_api.dart';
+import '../../core/api/catalog_cache.dart';
 import '../../core/i18n/locale.dart';
 import '../../models/models.dart';
 import '../../router.dart';
@@ -12,6 +13,7 @@ import '../../widgets/cinema_record_card.dart';
 import '../../widgets/footer.dart';
 import '../../widgets/loader.dart';
 import '../../widgets/pagination.dart';
+import 'auto_order_notice.dart';
 import 'discover_filters.dart';
 import 'list_background.dart';
 
@@ -27,6 +29,9 @@ class CatalogPage {
 final catalogPageProvider = FutureProvider.family<CatalogPage, CatalogQuery>((ref, query) async {
   final api = ref.watch(catalogApiProvider);
   const size = CatalogApi.pageSize;
+  // Cached a while, like the website's listings — far less right after an
+  // order, so the ordered title shows up soon (see catalog_cache.dart).
+  expireAfter(ref, catalogIsFresh ? freshListingCacheTtl : listingCacheTtl);
 
   if (query.search != null) {
     final all = await api.searchByTitle(query.type, query.search!);
@@ -67,7 +72,7 @@ class CatalogScreen extends ConsumerWidget {
       color: AppColors.background,
       child: Stack(
         children: [
-          Positioned.fill(child: ListBackground(type: query.type)),
+          const Positioned.fill(child: ListBackground()),
           ListView(
             padding: shellContentPadding(context),
             children: [
@@ -82,7 +87,11 @@ class CatalogScreen extends ConsumerWidget {
                 error: (_, _) => const CinemaRecordGrid(records: []),
                 data: (result) => Column(
                   children: [
-                    CinemaRecordGrid(records: result.records),
+                    // A title search with no match orders it right away instead of a dead end.
+                    if (query.search != null && result.records.isEmpty && query.page == 1)
+                      AutoOrderNotice(query: query)
+                    else
+                      CinemaRecordGrid(records: result.records),
                     PaginationControls(
                       current: query.page,
                       total: result.totalPages,

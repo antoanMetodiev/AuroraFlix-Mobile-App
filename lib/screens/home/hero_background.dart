@@ -19,6 +19,16 @@ const _progressPoll = Duration(milliseconds: 250);
 /// the website's 1200ms reveal delay, which hides YouTube's own start-up flash.
 const _revealDelay = Duration(milliseconds: 1200);
 
+/// On the first trailer of a visit, how long the backdrop shows alone before
+/// the YouTube player is even created — its WebView and ~1 MB of player JS
+/// otherwise compete with the rest of the home screen for the network and
+/// CPU while it loads (the website waits the same after its load event).
+const _firstPlayerDelay = Duration(milliseconds: 2500);
+
+/// Once the first player was allowed, later ones (each title switch remounts
+/// HeroBackground) start straight away.
+bool _playerUnlocked = false;
+
 /// The hero's moving background (website: HeroBackground): the title's
 /// backdrop first, then — once its YouTube trailer is actually playing,
 /// muted — the trailer, cropped to cover the whole hero. Remounted per title
@@ -60,6 +70,7 @@ class _HeroBackgroundState extends State<HeroBackground> with SingleTickerProvid
   StreamSubscription<YoutubePlayerValue>? _subscription;
   Timer? _revealTimer;
   Timer? _progressTimer;
+  Timer? _unlockTimer;
   bool _videoReady = false;
   bool _ended = false;
 
@@ -69,6 +80,17 @@ class _HeroBackgroundState extends State<HeroBackground> with SingleTickerProvid
     final videoId = _youTubeId(widget.record.trailerVideoURL);
     if (videoId == null || !widget.showVideo) return;
 
+    if (_playerUnlocked) {
+      _startPlayer(videoId);
+      return;
+    }
+    _unlockTimer = Timer(_firstPlayerDelay, () {
+      _playerUnlocked = true;
+      if (mounted) setState(() => _startPlayer(videoId));
+    });
+  }
+
+  void _startPlayer(String videoId) {
     final player = YoutubePlayerController.fromVideoId(
       videoId: videoId,
       autoPlay: true,
@@ -153,6 +175,7 @@ class _HeroBackgroundState extends State<HeroBackground> with SingleTickerProvid
 
   @override
   void dispose() {
+    _unlockTimer?.cancel();
     _revealTimer?.cancel();
     _progressTimer?.cancel();
     _subscription?.cancel();

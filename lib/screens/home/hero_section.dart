@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -37,15 +38,25 @@ class _HeroSectionState extends ConsumerState<HeroSection> {
   int _index = 0;
   bool _muted = true;
   bool _videoReady = false;
-  double _progress = 0;
+
+  /// The playing trailer's progress (0–1). A notifier, not state: it ticks
+  /// every 250ms, and as state each tick rebuilt the whole hero — trailer
+  /// WebView and rail included. Only the rail's bar listens to it.
+  final _progress = ValueNotifier<double>(0);
 
   void _goTo(int index) {
     final count = widget.items.length;
+    _progress.value = 0;
     setState(() {
       _videoReady = false;
-      _progress = 0;
       _index = ((index % count) + count) % count;
     });
+  }
+
+  @override
+  void dispose() {
+    _progress.dispose();
+    super.dispose();
   }
 
   void _next() => _goTo(_index + 1);
@@ -108,7 +119,7 @@ class _HeroSectionState extends ConsumerState<HeroSection> {
                       muted: _muted,
                       onEnded: _next,
                       onReady: () => setState(() => _videoReady = true),
-                      onProgress: (value) => setState(() => _progress = value),
+                      onProgress: (value) => _progress.value = value,
                     ),
                     const DecoratedBox(
                       decoration: BoxDecoration(
@@ -385,7 +396,7 @@ class _TrailerRail extends ConsumerStatefulWidget {
 
   final List<CinemaRecord> items;
   final int currentIndex;
-  final double progress;
+  final ValueListenable<double> progress;
   final ValueChanged<int> onSelect;
 
   @override
@@ -501,10 +512,14 @@ class _TrailerRailState extends ConsumerState<_TrailerRail> {
                             color: Colors.white.withValues(alpha: 0.2),
                             child: Align(
                               alignment: Alignment.centerLeft,
-                              child: AnimatedFractionallySizedBox(
-                                duration: const Duration(milliseconds: 300),
-                                widthFactor: widget.progress,
-                                heightFactor: 1,
+                              child: ValueListenableBuilder<double>(
+                                valueListenable: widget.progress,
+                                builder: (context, progress, bar) => AnimatedFractionallySizedBox(
+                                  duration: const Duration(milliseconds: 300),
+                                  widthFactor: progress,
+                                  heightFactor: 1,
+                                  child: bar,
+                                ),
                                 child: DecoratedBox(
                                   decoration: BoxDecoration(
                                     color: Colors.white,

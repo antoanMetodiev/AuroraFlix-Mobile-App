@@ -546,7 +546,8 @@ class _Filmography extends ConsumerWidget {
               ),
             )
           else
-            _grid([for (final work in shown) _WorkCard(work: work, locale: locale)]),
+            // The first two rows load right away, the rest as they scroll in.
+            _grid([for (var i = 0; i < shown.length; i++) _WorkCard(work: shown[i], locale: locale, lazy: i >= 4)]),
         ],
       ),
     );
@@ -567,10 +568,11 @@ class _Filmography extends ConsumerWidget {
 }
 
 class _WorkCard extends ConsumerWidget {
-  const _WorkCard({required this.work, required this.locale});
+  const _WorkCard({required this.work, required this.locale, this.lazy = false});
 
   final ActorWork work;
   final String locale;
+  final bool lazy;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -591,7 +593,7 @@ class _WorkCard extends ConsumerWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (poster != null) AuroraImage(url: poster),
+            if (poster != null) AuroraImage(url: poster, lazy: lazy),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(

@@ -47,6 +47,11 @@ class _FilmGrainState extends State<FilmGrain> {
 
   @override
   Widget build(BuildContext context) {
+    // Phone widths skip it, like the website (below its 640px `sm`): over the
+    // playing hero trailer the blended layer is recomposited every video
+    // frame, and at 3.5% it isn't visible on a phone anyway.
+    if (MediaQuery.sizeOf(context).width < 640) return widget.child;
+
     final image = _image;
     return Stack(
       children: [
