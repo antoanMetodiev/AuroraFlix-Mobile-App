@@ -168,7 +168,8 @@ class _TypeSwitch extends StatelessWidget {
         children: [
           for (final type in RecordType.values)
             Expanded(
-              child: GestureDetector(
+              child: Pressable(
+                pressedScale: 1,
                 onTap: () => onChanged(type),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),

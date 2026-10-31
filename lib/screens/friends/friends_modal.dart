@@ -416,8 +416,8 @@ class _PersonRow extends StatelessWidget {
           spacing: 12,
           children: [
             Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
+              child: Pressable(
+                pressedScale: 1,
                 onTap: () => onOpenProfile(person),
                 child: Row(
                   children: [

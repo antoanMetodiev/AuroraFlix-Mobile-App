@@ -283,7 +283,8 @@ class _ClerkTextFieldState extends State<ClerkTextField> {
                   ),
                 ),
                 if (widget.obscure)
-                  GestureDetector(
+                  Pressable(
+                    pressedScale: 1,
                     onTap: () => setState(() => _hidden = !_hidden),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -346,7 +347,8 @@ class ClerkLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Pressable(
+      pressedScale: 1,
       onTap: onTap,
       child: MouseRegion(
         cursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
@@ -390,7 +392,8 @@ class ClerkIdentityPreview extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            GestureDetector(
+            Pressable(
+              pressedScale: 1,
               onTap: onEdit,
               child: Icon(LucideIcons.pencil, size: 13, color: ClerkColors.muted),
             ),

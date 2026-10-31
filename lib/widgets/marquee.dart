@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
@@ -43,22 +45,35 @@ class _MarqueeState extends State<Marquee> with SingleTickerProviderStateMixin {
         ..duration = widget.period
         ..repeat();
     }
+    if (oldWidget.itemCount != widget.itemCount) {
+      for (final node in _itemFocus) {
+        node.dispose();
+      }
+      _itemFocus = _createItemFocus();
+    }
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    for (final node in _itemFocus) {
+      node.dispose();
+    }
     super.dispose();
   }
 
   final _visibilityKey = UniqueKey();
   bool _held = false;
   bool _onScreen = true;
+  bool _focusInside = false;
+  bool _nudging = false;
+  double _viewportExtent = 0;
 
-  /// Runs only while on screen and not held down.
+  /// Runs only while on screen, not held down and not being browsed with a
+  /// remote.
   void _sync() {
-    if (_held || !_onScreen) {
-      _controller.stop();
+    if (_held || !_onScreen || _focusInside) {
+      if (!_nudging) _controller.stop();
     } else if (!_controller.isAnimating) {
       _controller.repeat();
     }
@@ -74,6 +89,40 @@ class _MarqueeState extends State<Marquee> with SingleTickerProviderStateMixin {
     _sync();
   }
 
+  /// One per laid-out item, both copies: a remote can land on whichever copy
+  /// is on screen, and hop to its twin when the loop wraps.
+  late List<FocusNode> _itemFocus = _createItemFocus();
+
+  List<FocusNode> _createItemFocus() => List.generate(widget.itemCount * 2, (_) => FocusNode(canRequestFocus: false, skipTraversal: true));
+
+  double get _progress => widget.reverse ? 1 - _controller.value : _controller.value;
+
+  /// Slides the (paused) strip just enough to keep the item a remote focused
+  /// in full view, since most of the strip is clipped away.
+  void _bringIntoView(int slot) {
+    final step = widget.itemExtent + widget.spacing;
+    final copyLength = widget.itemCount * step;
+    final position = slot * step;
+    final visibleAt = position - _progress * copyLength;
+    final margin = widget.spacing * 2;
+    final target = visibleAt.clamp(margin, math.max(margin, _viewportExtent - widget.itemExtent - margin));
+    if (target == visibleAt) return;
+
+    final progress = (position - target) / copyLength;
+    if (progress >= 0 && progress < 1) {
+      final value = widget.reverse ? 1 - progress : progress;
+      _nudging = true;
+      _controller.animateTo(value, duration: const Duration(milliseconds: 250), curve: Curves.easeOut).whenCompleteOrCancel(() => _nudging = false);
+      return;
+    }
+    // This copy can't get there — its twin, one copy's length away, can.
+    // Both copies look the same, so jump straight there and move to the twin.
+    final twinProgress = progress < 0 ? progress + 1 : progress - 1;
+    final twin = (slot + widget.itemCount) % (widget.itemCount * 2);
+    _controller.value = widget.reverse ? 1 - twinProgress : twinProgress;
+    _itemFocus[twin].children.firstOrNull?.requestFocus();
+  }
+
   @override
   Widget build(BuildContext context) {
     final horizontal = widget.axis == Axis.horizontal;
@@ -87,8 +136,17 @@ class _MarqueeState extends State<Marquee> with SingleTickerProviderStateMixin {
             child: SizedBox(
               width: horizontal ? widget.itemExtent : null,
               height: horizontal ? null : widget.itemExtent,
-              // Only the first copy is real; the second is decoration.
-              child: ExcludeSemantics(excluding: copy == 1, child: widget.itemBuilder(context, index)),
+              // For screen readers only the first copy is real.
+              child: ExcludeSemantics(
+                excluding: copy == 1,
+                child: Focus(
+                  focusNode: _itemFocus[copy * widget.itemCount + index],
+                  onFocusChange: (focused) {
+                    if (focused) _bringIntoView(copy * widget.itemCount + index);
+                  },
+                  child: widget.itemBuilder(context, index),
+                ),
+              ),
             ),
           ),
     ];
@@ -100,26 +158,39 @@ class _MarqueeState extends State<Marquee> with SingleTickerProviderStateMixin {
         _onScreen = info.visibleFraction > 0;
         _sync();
       },
-      child: Listener(
-        onPointerDown: (_) => _pause(),
-        onPointerUp: (_) => _resume(),
-        onPointerCancel: (_) => _resume(),
-        child: ClipRect(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              final progress = widget.reverse ? 1 - _controller.value : _controller.value;
-              final shift = -progress * copyLength;
-              return Transform.translate(offset: horizontal ? Offset(shift, 0) : Offset(0, shift), child: child);
+      child: Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        onFocusChange: (focused) {
+          _focusInside = focused;
+          _sync();
+        },
+        child: Listener(
+          onPointerDown: (_) => _pause(),
+          onPointerUp: (_) => _resume(),
+          onPointerCancel: (_) => _resume(),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              _viewportExtent = horizontal ? constraints.maxWidth : constraints.maxHeight;
+              return ClipRect(
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    final progress = widget.reverse ? 1 - _controller.value : _controller.value;
+                    final shift = -progress * copyLength;
+                    return Transform.translate(offset: horizontal ? Offset(shift, 0) : Offset(0, shift), child: child);
+                  },
+                  child: OverflowBox(
+                    alignment: horizontal ? Alignment.centerLeft : Alignment.topCenter,
+                    maxWidth: horizontal ? double.infinity : null,
+                    maxHeight: horizontal ? null : double.infinity,
+                    child: horizontal
+                        ? Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: items)
+                        : Column(mainAxisSize: MainAxisSize.min, children: items),
+                  ),
+                ),
+              );
             },
-            child: OverflowBox(
-              alignment: horizontal ? Alignment.centerLeft : Alignment.topCenter,
-              maxWidth: horizontal ? double.infinity : null,
-              maxHeight: horizontal ? null : double.infinity,
-              child: horizontal
-                  ? Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: items)
-                  : Column(mainAxisSize: MainAxisSize.min, children: items),
-            ),
           ),
         ),
       ),

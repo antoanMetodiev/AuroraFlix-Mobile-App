@@ -563,8 +563,8 @@ class _TypeTabs extends StatelessWidget {
               children: [
                 for (final type in const [ImageType.backdrop, ImageType.poster])
                   Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
+                    child: Pressable(
+                      pressedScale: 1,
                       onTap: () => onChanged(type),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),

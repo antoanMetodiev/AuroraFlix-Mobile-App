@@ -194,7 +194,8 @@ class _DiscoverFiltersState extends ConsumerState<DiscoverFiltersBar> {
                       label: query.sort == SortOption.topRated ? t('filters.sortTopRated') : t('filters.sortOldest'),
                       onRemove: () => _navigate(query.copyWith(sort: () => null)),
                     ),
-                  GestureDetector(
+                  Pressable(
+                    pressedScale: 1,
                     onTap: () => context.go(CatalogQuery(type: query.type).location()),
                     child: Text(
                       t('filters.clearAll'),
@@ -233,7 +234,8 @@ class _FilterChip extends StatelessWidget {
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.fg(0.8)),
           ),
           const SizedBox(width: 6),
-          GestureDetector(
+          Pressable(
+            pressedScale: 1,
             onTap: onRemove,
             child: Icon(LucideIcons.x, size: 14, color: AppColors.fg(0.5)),
           ),
@@ -422,7 +424,8 @@ class _ActorSuggestion extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       child: Row(
         children: [
-          GestureDetector(
+          Pressable(
+            pressedScale: 1,
             onTap: onOpen,
             child: Container(
               width: 36,
@@ -438,8 +441,8 @@ class _ActorSuggestion extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
+            child: Pressable(
+              pressedScale: 1,
               onTap: onPick,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -458,7 +461,8 @@ class _ActorSuggestion extends StatelessWidget {
                           for (final (icon, url) in socials)
                             Padding(
                               padding: const EdgeInsets.only(right: 8),
-                              child: GestureDetector(
+                              child: Pressable(
+                                pressedScale: 1,
                                 onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
                                 child: FaIcon(icon, size: 11, color: AppColors.fg(0.35)),
                               ),

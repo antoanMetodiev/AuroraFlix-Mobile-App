@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/i18n/locale.dart';
 import '../core/theme.dart';
 import 'reveal.dart';
+import './pressable.dart';
 
 const _linkedInUrl = 'https://www.linkedin.com/in/antoan-metodiev-875518303';
 
@@ -50,7 +51,8 @@ class SiteFooter extends ConsumerWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text('${t('footer.tagline')} ', style: TextStyle(fontSize: 14, color: muted)),
-                GestureDetector(
+                Pressable(
+                  pressedScale: 1,
                   onTap: () => launchUrl(Uri.parse(_linkedInUrl), mode: LaunchMode.externalApplication),
                   child: Text(
                     'Antoan Metodiev',

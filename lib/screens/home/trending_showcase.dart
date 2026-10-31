@@ -116,7 +116,8 @@ class _ShowcaseBlock extends ConsumerWidget {
                     const SizedBox(height: 32),
                     _RankedList(items: items),
                     const SizedBox(height: 40),
-                    SizedBox(height: 460, child: _PosterColumns(items: items)),
+                    // The same titles as the list above — a remote skips them.
+                    SizedBox(height: 460, child: ExcludeFocus(child: _PosterColumns(items: items))),
                   ],
                 ),
               ),

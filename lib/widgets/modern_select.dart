@@ -165,7 +165,8 @@ class _OptionsPanel extends StatelessWidget {
                       builder: (context) {
                         final option = options[index];
                         final active = option.value == value;
-                        return GestureDetector(
+                        return Pressable(
+                          pressedScale: 1,
                           onTap: () => onSelect(option.value),
                           child: Container(
                             height: 38,

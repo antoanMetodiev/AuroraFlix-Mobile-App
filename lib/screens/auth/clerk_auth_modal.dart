@@ -10,6 +10,7 @@ import '../../core/auth/clerk_models.dart';
 import '../../core/config.dart';
 import '../../core/theme.dart';
 import 'clerk_ui.dart';
+import '../../widgets/pressable.dart';
 
 enum ClerkAuthMode { signIn, signUp }
 
@@ -639,7 +640,8 @@ class _BlockButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Pressable(
+      pressedScale: 1,
       onTap: onTap,
       child: Container(
         height: 38,
@@ -676,7 +678,8 @@ class _Checkbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Pressable(
+      pressedScale: 1,
       onTap: () => onChanged(!value),
       child: Row(
         children: [

@@ -624,7 +624,8 @@ class _UploadSubtitlesGuideState extends ConsumerState<_UploadSubtitlesGuide> {
                   ],
                 ),
               ),
-              GestureDetector(
+              Pressable(
+                pressedScale: 1,
                 onTap: () => setState(() => _open = false),
                 child: Icon(LucideIcons.x, size: 18, color: Colors.white.withValues(alpha: 0.6)),
               ),
@@ -721,7 +722,8 @@ class _StartButton extends StatelessWidget {
     return Semantics(
       button: true,
       label: label,
-      child: GestureDetector(
+      child: Pressable(
+        pressedScale: 1,
         onTap: onTap,
         child: Stack(
           fit: StackFit.expand,
@@ -823,7 +825,8 @@ class _TimedNoticeState extends State<_TimedNotice> {
                   ],
                 ),
               ),
-              GestureDetector(
+              Pressable(
+                pressedScale: 1,
                 onTap: () => setState(() => _visible = false),
                 child: Icon(LucideIcons.x, size: 16, color: Colors.white.withValues(alpha: 0.6)),
               ),

@@ -841,9 +841,9 @@ class _PasswordFormState extends ConsumerState<_PasswordForm> {
       if (widget.hasPassword) ClerkTextField(label: 'Current password', controller: _current, obscure: true),
       ClerkTextField(label: 'New password', controller: _next, obscure: true),
       ClerkTextField(label: 'Confirm password', controller: _confirm, obscure: true, error: _confirmError),
-      GestureDetector(
+      Pressable(
+        pressedScale: 1,
         onTap: () => setState(() => _signOutOthers = !_signOutOthers),
-        behavior: HitTestBehavior.opaque,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

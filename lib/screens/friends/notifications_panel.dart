@@ -10,6 +10,7 @@ import '../../core/i18n/locale.dart';
 import '../../core/theme.dart';
 import 'friend_widgets.dart';
 import 'user_profile_modal.dart';
+import '../../widgets/pressable.dart';
 
 /// Unseen notifications for the bell's "+N" — every 25s and on every live
 /// friend event (website: NotificationsBell's poll).
@@ -102,8 +103,8 @@ class _NotificationsPanelState extends ConsumerState<NotificationsPanel> {
           spacing: 4,
           children: [
             for (final notification in items)
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
+              Pressable(
+                pressedScale: 1,
                 onTap: () => showUserProfileModal(context, notification.actor),
                 child: Padding(
                   padding: const EdgeInsets.all(8),

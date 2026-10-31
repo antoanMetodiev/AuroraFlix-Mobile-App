@@ -109,8 +109,8 @@ class _PlaylistCardState extends ConsumerState<PlaylistCard> {
         ),
       );
     } else {
-      header = GestureDetector(
-        behavior: HitTestBehavior.opaque,
+      header = Pressable(
+        pressedScale: 1,
         onTap: () => setState(() => _expanded = !_expanded),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -379,7 +379,8 @@ class VisibilityToggle extends ConsumerWidget {
             (false, LucideIcons.lock, t('playlists.visibilityPrivate')),
             (true, LucideIcons.globe, t('playlists.visibilityPublic')),
           ])
-            GestureDetector(
+            Pressable(
+              pressedScale: 1,
               onTap: () => onChanged(isPublic),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
@@ -865,7 +866,8 @@ class _AddItemsPanelState extends ConsumerState<_AddItemsPanel> {
                           children: [
                             for (final type in RecordType.values)
                               Expanded(
-                                child: GestureDetector(
+                                child: Pressable(
+                                  pressedScale: 1,
                                   onTap: () {
                                     setState(() {
                                       _type = type;

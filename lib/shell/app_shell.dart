@@ -353,8 +353,12 @@ class _FadingBranches extends StatelessWidget {
               offstage: index != currentIndex,
               child: TickerMode(
                 enabled: index == currentIndex,
+                // Nor can a remote's arrows reach into them.
+                child: ExcludeFocus(
+                  excluding: index != currentIndex,
                 // Same wrapper either way, so a tab's state survives switching.
-                child: _FadeInWhenActive(active: index == currentIndex, child: children[index]),
+                  child: _FadeInWhenActive(active: index == currentIndex, child: children[index]),
+                ),
               ),
             ),
           ),

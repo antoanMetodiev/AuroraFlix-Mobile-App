@@ -244,7 +244,8 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
               child: Wrap(
                 alignment: WrapAlignment.center,
                 children: [
-                  GestureDetector(
+                  Pressable(
+                    pressedScale: 1,
                     onTap: () => showClerkAuthModal(context, ClerkAuthMode.signIn),
                     child: Text(
                       t('comments.signInCta'),
@@ -441,7 +442,8 @@ class _CommentTile extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      GestureDetector(
+                      Pressable(
+                        pressedScale: 1,
                         onTap: savingEdit ? null : onCancelEdit,
                         child: Row(
                           children: [
@@ -639,7 +641,8 @@ class _ReactionsBarState extends ConsumerState<_ReactionsBar> {
                                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.6, color: AppColors.fg(0.7)),
                               ),
                             ),
-                            GestureDetector(
+                            Pressable(
+                              pressedScale: 1,
                               onTap: () => setState(() => _panel = null),
                               child: Icon(LucideIcons.x, size: 13, color: AppColors.fg(0.4)),
                             ),

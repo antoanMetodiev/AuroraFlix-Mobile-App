@@ -112,14 +112,18 @@ class _HeroSectionState extends ConsumerState<HeroSection> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    HeroBackground(
-                      key: ValueKey((record.id, onScreen)),
-                      record: record,
-                      showVideo: onScreen,
-                      muted: _muted,
-                      onEnded: _next,
-                      onReady: () => setState(() => _videoReady = true),
-                      onProgress: (value) => _progress.value = value,
+                    // The trailer is an embedded player; a remote's focus
+                    // landing inside it could never get back out.
+                    ExcludeFocus(
+                      child: HeroBackground(
+                        key: ValueKey((record.id, onScreen)),
+                        record: record,
+                        showVideo: onScreen,
+                        muted: _muted,
+                        onEnded: _next,
+                        onReady: () => setState(() => _videoReady = true),
+                        onProgress: (value) => _progress.value = value,
+                      ),
                     ),
                     const DecoratedBox(
                       decoration: BoxDecoration(
@@ -296,6 +300,8 @@ class _WatchNowButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Pressable(
       onTap: onTap,
+      // Where a remote starts on the home screen.
+      autofocus: true,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
