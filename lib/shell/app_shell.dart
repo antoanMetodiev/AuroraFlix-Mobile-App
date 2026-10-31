@@ -7,6 +7,7 @@ import '../core/auth/current_user.dart';
 // PAYMENTS DISABLED: import '../core/payments/payments.dart';
 import '../core/friends/friends_store.dart';
 import '../core/theme.dart';
+import '../core/tv.dart';
 import '../core/update/app_update.dart';
 import '../core/navigation.dart';
 import '../models/models.dart';
@@ -92,7 +93,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     _lifecycle;
     // A release that needs a new APK: offer it once per launch.
     if (canSelfUpdate) {
-      checkForAppUpdate().then((release) {
+      checkForAppUpdate(tv: ref.read(isTvProvider)).then((release) {
         if (release != null && mounted) showUpdateDialog(context, release);
       });
     }

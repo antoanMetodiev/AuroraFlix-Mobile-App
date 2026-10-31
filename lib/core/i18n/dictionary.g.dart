@@ -30,6 +30,8 @@ const Map<String, Map<String, String>> dictionary = {
   'install.mockNotThis': {'en': 'not this', 'bg': 'не това', 'el': 'όχι αυτό', 'es': 'esto no'},
   'install.downloadAgain': {'en': 'Download again', 'bg': 'Изтегли отново', 'el': 'Λήψη ξανά', 'es': 'Descargar de nuevo'},
   'install.close': {'en': 'Got it', 'bg': 'Разбрах', 'el': 'Εντάξει', 'es': 'Entendido'},
+  'install.tvTitle': {'en': 'On an Android TV?', 'bg': 'На Android TV?', 'el': 'Σε Android TV;', 'es': '¿En un Android TV?'},
+  'install.tvText': {'en': 'Install **Downloader** from Google Play on the TV, open it and enter **auroraflix.cloud/tv**. If it asks, allow Downloader to install apps.', 'bg': 'Инсталирай **Downloader** от Google Play на телевизора, отвори го и въведи **auroraflix.cloud/tv**. Ако попита, разреши на Downloader да инсталира приложения.', 'el': 'Εγκατάστησε το **Downloader** από το Google Play στην τηλεόραση, άνοιξέ το και γράψε **auroraflix.cloud/tv**. Αν ρωτήσει, επίτρεψε στο Downloader να εγκαθιστά εφαρμογές.', 'es': 'Instala **Downloader** desde Google Play en el televisor, ábrelo e introduce **auroraflix.cloud/tv**. Si lo pide, permite que Downloader instale aplicaciones.'},
   'nav.iosApp': {'en': 'iPhone app', 'bg': 'iPhone приложение', 'el': 'Εφαρμογή iPhone', 'es': 'App para iPhone'},
   'nav.iosSoon': {'en': 'iPhone app — coming soon', 'bg': 'iPhone приложение — скоро', 'el': 'Εφαρμογή iPhone — έρχεται σύντομα', 'es': 'App para iPhone — próximamente'},
   'nav.openMenu': {'en': 'Open menu', 'bg': 'Отвори менюто', 'el': 'Άνοιγμα μενού', 'es': 'Abrir menú'},

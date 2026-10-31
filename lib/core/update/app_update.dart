@@ -9,7 +9,9 @@ import '../config.dart';
 /// The newest APK on auroraflix.cloud, described by
 /// `/downloads/version.json`:
 /// `{ "versionCode": 4, "versionName": "0.2.0", "url": "…/auroraflix.apk",
-///    "notes": { "bg": "…", "en": "…" } }`.
+///    "notes": { "bg": "…", "en": "…" }, "tv": { …the same fields… } }`.
+/// `tv` is the 32-bit ARM build Android TVs need; it's released on its own,
+/// so it keeps its own version.
 ///
 /// Small changes reach phones through Shorebird patches by themselves; this
 /// is for the releases that need a new APK (new native code, icon,
@@ -22,8 +24,9 @@ class AppRelease {
   final String url;
   final Map<String, String> notes;
 
-  static AppRelease? fromJson(Object? json) {
+  static AppRelease? fromJson(Object? json, {bool tv = false}) {
     if (json is! Map) return null;
+    if (tv) return fromJson(json['tv']);
     final code = json['versionCode'];
     final url = json['url'];
     if (code is! num || url is! String || url.isEmpty) return null;
@@ -44,8 +47,9 @@ const _versionUrl = '$siteUrl/downloads/version.json';
 /// Only the Android APK updates itself this way.
 bool get canSelfUpdate => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
-/// The published release, if it's newer than the installed one.
-Future<AppRelease?> checkForAppUpdate() async {
+/// The published release, if it's newer than the installed one. A TV only
+/// gets offered the TV build — the phone one won't install there.
+Future<AppRelease?> checkForAppUpdate({required bool tv}) async {
   if (!canSelfUpdate) return null;
   try {
     // Cache-busted so a fresh release shows up right away.
@@ -53,7 +57,7 @@ Future<AppRelease?> checkForAppUpdate() async {
         .get(Uri.parse('$_versionUrl?t=${DateTime.now().millisecondsSinceEpoch}'))
         .timeout(const Duration(seconds: 15));
     if (response.statusCode != 200) return null;
-    final release = AppRelease.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+    final release = AppRelease.fromJson(jsonDecode(utf8.decode(response.bodyBytes)), tv: tv);
     if (release == null) return null;
     final installed = int.tryParse((await PackageInfo.fromPlatform()).buildNumber) ?? 0;
     return release.versionCode > installed ? release : null;

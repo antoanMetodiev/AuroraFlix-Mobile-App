@@ -39,9 +39,19 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        // We publish one arm64 APK (Cloudflare serves files up to 25 MiB),
-        // so plugins' other-ABI native libs would only be dead weight.
-        ndk { abiFilters += listOf("arm64-v8a") }
+    }
+
+    // We publish one APK per ABI (Cloudflare serves files up to 25 MiB):
+    // arm64 for phones, and with `--target-platform android-arm` 32-bit ARM
+    // for Android TVs (most run a 32-bit system on a 64-bit chip). Plugins
+    // ship native libs for every ABI, and ndk.abiFilters didn't drop them —
+    // any other ABI's folder in the APK must go, or a device that supports it
+    // picks it and finds no libflutter.so there.
+    val abi = if (project.findProperty("target-platform") == "android-arm") "armeabi-v7a" else "arm64-v8a"
+    packaging {
+        jniLibs {
+            excludes += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64").filter { it != abi }.map { "lib/$it/**" }
+        }
     }
 
     signingConfigs {

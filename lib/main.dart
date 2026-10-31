@@ -7,6 +7,7 @@ import 'package:visibility_detector/visibility_detector.dart';
 
 import 'core/i18n/locale.dart';
 import 'core/theme.dart';
+import 'core/tv.dart';
 import 'router.dart';
 
 Future<void> main() async {
@@ -33,8 +34,14 @@ Future<void> main() async {
     for (final locale in ['bg', 'en_US', 'el', 'es']) initializeDateFormatting(locale),
   ]);
   final preferences = await SharedPreferences.getInstance();
+  final isTv = await detectTv();
 
-  runApp(ProviderScope(overrides: [sharedPreferencesProvider.overrideWithValue(preferences)], child: const AuroraFlixApp()));
+  runApp(
+    ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(preferences), isTvProvider.overrideWithValue(isTv)],
+      child: const AuroraFlixApp(),
+    ),
+  );
 }
 
 class AuroraFlixApp extends ConsumerWidget {
