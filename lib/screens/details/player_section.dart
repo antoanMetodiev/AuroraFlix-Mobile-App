@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/bg_audio.dart';
 import '../../core/config.dart';
 import '../../core/friends/friends_api.dart';
 import '../../core/friends/watching_presence.dart';
@@ -35,6 +36,10 @@ final _subtitleUrlProvider = FutureProvider.family<String?, String>((ref, path) 
     return null;
   }
 });
+
+/// Our own БГ аудио player (core/bg_audio.dart) — not an embed: listed
+/// first and selected when the movie has a Bulgarian dub, and ad-free.
+const _bgAudioPlayer = 7;
 
 const _vidlinkStartTimeout = Duration(seconds: 15);
 const _vidlinkFallback = 1;
@@ -66,6 +71,10 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
   bool _vidsrcUsesOurSubs = false;
   ProviderId? _autoSwitchedFrom;
 
+  /// The dub's stream wouldn't play (bg-player.html said so) — the БГ аудио
+  /// player is dropped for this movie.
+  bool _bgAudioFailed = false;
+
   // VidLink watchdog (see the website): its stream often just spins forever,
   // so if no real playback is reported in time we move to vidsrc2.ru.
   Timer? _vidlinkTimer;
@@ -96,6 +105,7 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
   void didUpdateWidget(PlayerSection oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.videoUrl != widget.videoUrl) {
+      _bgAudioFailed = false;
       _hasStarted = false;
       _autoSwitchedFrom = null;
       _frameLoading = true;
@@ -156,10 +166,18 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
       return;
     }
     if (!_hasStarted || _active != 1) _vidsrcUsesOurSubs = true;
-    if (!_hasStarted && !_userChangedPlayer) _active = 5;
+    if (!_hasStarted && !_userChangedPlayer && _active != _bgAudioPlayer) _active = 5;
   }
 
-  Map<ProviderId, String?> _urls(VidsrcRef? ref, String? subtitleUrl) => {
+  /// The movie's dub, once resolved: its player becomes the selected one,
+  /// unless the viewer already started or picked another.
+  void _onBgAudioResolved(String? master) {
+    if (master != null && !_hasStarted && !_userChangedPlayer) _active = _bgAudioPlayer;
+    if (master == null && _active == _bgAudioPlayer) _active = 1;
+  }
+
+  Map<ProviderId, String?> _urls(VidsrcRef? ref, String? subtitleUrl, String? bgAudioMaster) => {
+    _bgAudioPlayer: bgAudioMaster == null ? null : bgPlayerUrl(bgAudioMaster, subtitleUrl: subtitleUrl, title: widget.title),
     1: widget.videoUrl.isEmpty ? null : vidsrcUrl(widget.videoUrl, subtitleUrl: _vidsrcUsesOurSubs ? subtitleUrl : null),
     2: ref == null ? null : vidfastUrl(ref),
     3: ref == null ? null : cinesrcUrl(ref),
@@ -205,6 +223,14 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
   /// A real step forward in VidLink's `PLAYER_EVENT` timeupdates — a jump
   /// is a seek (e.g. restoring progress) and doesn't count as playing.
   void _onFrameMessage(String origin, Object? data) {
+    if (_active == _bgAudioPlayer && data is Map && data['type'] == 'BG_AUDIO_FAILED') {
+      setState(() {
+        _bgAudioFailed = true;
+        _active = 1;
+        _frameLoading = true;
+      });
+      return;
+    }
     if (_active != 4 || _vidlinkPlaying || origin != vidlinkOrigin || data is! Map) return;
     final inner = data['data'];
     if (data['type'] != 'PLAYER_EVENT' || inner is! Map || inner['event'] != 'timeupdate') return;
@@ -236,13 +262,24 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
       });
     }
 
+    String? bgAudioMaster;
+    if (vidsrcRef is MovieRef && !_bgAudioFailed) {
+      bgAudioMaster = ref.watch(bgAudioMasterProvider(vidsrcRef.tmdbId)).value;
+      ref.listen(bgAudioMasterProvider(vidsrcRef.tmdbId), (previous, next) {
+        if (next.hasValue) setState(() => _onBgAudioResolved(next.value));
+      });
+    }
+
     final hasOwn = subtitleUrl != null;
-    final order = hasOwn ? const [5, 1, 4, 2, 3, 6] : const [1, 2, 3, 6];
-    final urls = _urls(vidsrcRef, subtitleUrl);
+    final embeds = hasOwn ? const [5, 1, 4, 2, 3, 6] : const [1, 2, 3, 6];
+    final order = bgAudioMaster == null ? embeds : [_bgAudioPlayer, ...embeds];
+    final urls = _urls(vidsrcRef, subtitleUrl, bgAudioMaster);
     final activeSrc = urls[_active] ?? urls[1];
     final sandboxed = sandboxedPlayers.contains(_active) && urls[_active] != null;
+    // Ours plays no ads: no sandbox needed, and nothing to guard against.
+    final ownPlayer = _active == _bgAudioPlayer && urls[_bgAudioPlayer] != null;
 
-    setLeavePageGuard(_hasStarted && !sandboxed && activeSrc != null);
+    setLeavePageGuard(_hasStarted && !sandboxed && !ownPlayer && activeSrc != null);
     _presence
       ..signedIn = ref.watch(authProvider.select((auth) => auth.isSignedIn))
       ..update(_watchingTarget(vidsrcRef));
@@ -259,11 +296,13 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
                 _PlayerPicker(
                   order: order,
                   active: _active,
-                  badge: (provider) =>
-                      (bgSubtitles: hasOwn && (const {3, 4, 5, 6}.contains(provider) || (provider == 1 && _vidsrcUsesOurSubs))),
+                  badge: (provider) => (
+                    bgSubtitles: hasOwn && (const {3, 4, 5, 6, _bgAudioPlayer}.contains(provider) || (provider == 1 && _vidsrcUsesOurSubs)),
+                    bgAudio: provider == _bgAudioPlayer,
+                  ),
                   onSelect: _select,
                 ),
-              if (widget.videoUrl.isNotEmpty && sandboxed) _NoAdsBanner(key: ValueKey(activeSrc)),
+              if (widget.videoUrl.isNotEmpty && (sandboxed || ownPlayer)) _NoAdsBanner(key: ValueKey(activeSrc)),
               if (widget.videoUrl.isNotEmpty && _active == 6 && urls[6] != null && subtitleUrl != null)
                 _UploadSubtitlesGuide(
                   subtitleUrl: subtitleUrl,
@@ -291,10 +330,7 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
                       ),
                       child: widget.videoUrl.isEmpty || activeSrc == null
                           ? Center(
-                              child: Text(
-                                t('player.pickEpisode'),
-                                style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.4)),
-                              ),
+                              child: Text(t('player.pickEpisode'), style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.4))),
                             )
                           : !_hasStarted
                           ? _StartButton(poster: widget.poster, label: t('player.play'), onTap: _start)
@@ -351,7 +387,7 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
   }
 }
 
-typedef _Badge = ({bool bgSubtitles});
+typedef _Badge = ({bool bgSubtitles, bool bgAudio});
 
 /// "Choose a player" card with one pill per provider (the app shows no
 /// "no ads" / subtitle-mode tags on them, unlike the website).
@@ -473,10 +509,29 @@ class _PlayerPill extends ConsumerWidget {
                   const SizedBox(width: 6),
                   Icon(LucideIcons.captions, size: 16, color: active ? const Color(0xFF059669) : AppColors.emerald),
                 ],
+                if (badge.bgAudio) ...[
+                  const SizedBox(width: 4),
+                  Icon(LucideIcons.audioLines, size: 16, color: active ? const Color(0xFF0284C7) : AppColors.sky),
+                ],
               ],
             ),
           ),
         ),
+        // "БГ аудио" on the pill's top edge, like the website's tags.
+        if (badge.bgAudio)
+          Positioned(
+            top: -9,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(color: AppColors.sky, borderRadius: BorderRadius.circular(999)),
+                child: Text(
+                  ref.watch(translatorProvider)('player.bgAudio').toUpperCase(),
+                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.4, color: Color(0xFF0A0A0A)),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -492,9 +547,7 @@ class _NoAdsBanner extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.emerald.withValues(alpha: 0.15), AppColors.emerald.withValues(alpha: 0.07), Colors.transparent],
-        ),
+        gradient: LinearGradient(colors: [AppColors.emerald.withValues(alpha: 0.15), AppColors.emerald.withValues(alpha: 0.07), Colors.transparent]),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.emerald.withValues(alpha: 0.3)),
       ),
@@ -663,10 +716,7 @@ class _UploadSubtitlesGuideState extends ConsumerState<_UploadSubtitlesGuide> {
                         if (widget.stepImages[i + 1] != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 8),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.asset(widget.stepImages[i + 1]!, width: 288),
-                            ),
+                            child: ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.asset(widget.stepImages[i + 1]!, width: 288)),
                           ),
                         if (i == 0)
                           Padding(
