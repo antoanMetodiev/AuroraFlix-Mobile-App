@@ -9,6 +9,7 @@ import 'core/i18n/locale.dart';
 import 'core/theme.dart';
 import 'core/tv.dart';
 import 'router.dart';
+import 'widgets/tv_cursor.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,26 +36,14 @@ Future<void> main() async {
   ]);
   final preferences = await SharedPreferences.getInstance();
   final isTv = await detectTv();
-  if (isTv) bridgePageFocusScopes();
 
   runApp(
-    ProviderScope(overrides: [sharedPreferencesProvider.overrideWithValue(preferences), isTvProvider.overrideWithValue(isTv)], child: const AuroraFlixApp()),
+    ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(preferences), isTvProvider.overrideWithValue(isTv)],
+      child: const AuroraFlixApp(),
+    ),
   );
 }
-
-/// The remote's D-pad moves focus and its centre button taps — spelled out
-/// because the browser build (`?tv=1`) would otherwise scroll on arrows.
-final _tvShortcuts = <ShortcutActivator, Intent>{
-  ...WidgetsApp.defaultShortcuts,
-  const SingleActivator(LogicalKeyboardKey.arrowUp): const DirectionalFocusIntent(TraversalDirection.up),
-  const SingleActivator(LogicalKeyboardKey.arrowDown): const DirectionalFocusIntent(TraversalDirection.down),
-  const SingleActivator(LogicalKeyboardKey.arrowLeft): const DirectionalFocusIntent(TraversalDirection.left),
-  const SingleActivator(LogicalKeyboardKey.arrowRight): const DirectionalFocusIntent(TraversalDirection.right),
-  const SingleActivator(LogicalKeyboardKey.select): const ActivateIntent(),
-  const SingleActivator(LogicalKeyboardKey.enter): const ActivateIntent(),
-  const SingleActivator(LogicalKeyboardKey.numpadEnter): const ActivateIntent(),
-  const SingleActivator(LogicalKeyboardKey.gameButtonA): const ActivateIntent(),
-};
 
 class AuroraFlixApp extends ConsumerWidget {
   const AuroraFlixApp({super.key});
@@ -66,11 +55,14 @@ class AuroraFlixApp extends ConsumerWidget {
     // the new language (titles, descriptions, artwork), like the website's
     // reload.
     final locale = ref.watch(localeProvider);
+    // On a TV the remote drives an on-screen mouse pointer.
+    final isTv = ref.watch(isTvProvider);
     return MaterialApp.router(
       key: ValueKey(locale),
       title: 'AuroraFlix',
       debugShowCheckedModeBanner: false,
-      shortcuts: ref.watch(isTvProvider) ? _tvShortcuts : null,
+      shortcuts: isTv ? tvCursorShortcuts : null,
+      builder: isTv ? (context, child) => TvCursor(child: child!) : null,
       theme: buildAppTheme(),
       routerConfig: appRouter,
     );

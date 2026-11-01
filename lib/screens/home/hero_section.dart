@@ -300,8 +300,6 @@ class _WatchNowButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Pressable(
       onTap: onTap,
-      // Where a remote starts on the home screen.
-      autofocus: true,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
