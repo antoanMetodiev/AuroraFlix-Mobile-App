@@ -37,16 +37,15 @@ List<RouteBase> _sharedRoutes() => [
   ),
 ];
 
-StatefulShellBranch _branch(String path, Widget Function(GoRouterState state) screen, {List<RouteBase> routes = const []}) =>
-    StatefulShellBranch(
-      routes: [
-        GoRoute(
-          path: path,
-          pageBuilder: (context, state) => NoTransitionPage(child: screen(state)),
-          routes: [...routes, ..._sharedRoutes()],
-        ),
-      ],
-    );
+StatefulShellBranch _branch(String path, Widget Function(GoRouterState state) screen, {List<RouteBase> routes = const []}) => StatefulShellBranch(
+  routes: [
+    GoRoute(
+      path: path,
+      pageBuilder: (context, state) => NoTransitionPage(child: screen(state)),
+      routes: [...routes, ..._sharedRoutes()],
+    ),
+  ],
+);
 
 /// The catalog list for a tab: `?genre=&year=&actor=&sort=&page=`, or a
 /// title search at `search/:query` (the website's /movies, /movies/genres/X
@@ -59,11 +58,7 @@ StatefulShellBranch _catalogBranch(String path, RecordType type) => _branch(
       path: 'search/:query',
       builder: (context, state) => CatalogScreen(
         key: ValueKey(state.uri.toString()),
-        query: CatalogQuery(
-          type: type,
-          search: state.pathParameters['query'],
-          page: int.tryParse(state.uri.queryParameters['page'] ?? '') ?? 1,
-        ),
+        query: CatalogQuery(type: type, search: state.pathParameters['query'], page: int.tryParse(state.uri.queryParameters['page'] ?? '') ?? 1),
       ),
     ),
   ],
@@ -91,8 +86,7 @@ final appRouter = GoRouter(
             GoRoute(
               path: ':type',
               redirect: (context, state) => const {'movie', 'series'}.contains(state.pathParameters['type']) ? null : '/order',
-              builder: (context, state) =>
-                  OrderFormScreen(type: state.pathParameters['type'] == 'series' ? RecordType.series : RecordType.movie),
+              builder: (context, state) => OrderFormScreen(type: state.pathParameters['type'] == 'series' ? RecordType.series : RecordType.movie),
             ),
           ],
         ),
@@ -103,17 +97,20 @@ final appRouter = GoRouter(
 
 /// Everything a catalog list is filtered by.
 class CatalogQuery {
-  const CatalogQuery({required this.type, this.genre, this.year, this.actor, this.sort, this.search, this.page = 1});
+  const CatalogQuery({required this.type, this.genre, this.year, this.actor, this.sort, this.bgAudio = false, this.search, this.page = 1});
 
   final RecordType type;
   final String? genre;
   final String? year;
   final String? actor;
   final SortOption? sort;
+
+  /// Movies only: just the ones with a Bulgarian dub (?audio=bg).
+  final bool bgAudio;
   final String? search;
   final int page;
 
-  DiscoverFilters get filters => DiscoverFilters(genre: genre, year: year, actor: actor, sort: sort);
+  DiscoverFilters get filters => DiscoverFilters(genre: genre, year: year, actor: actor, sort: sort, bgAudio: bgAudio);
 
   static String? _nonEmpty(String? value) => value == null || value.isEmpty ? null : value;
 
@@ -129,6 +126,7 @@ class CatalogQuery {
         'oldest' => SortOption.oldest,
         _ => null,
       },
+      bgAudio: type == RecordType.movie && params['audio'] == 'bg',
       page: int.tryParse(params['page'] ?? '') ?? 1,
     );
   }
@@ -138,10 +136,7 @@ class CatalogQuery {
     final base = type == RecordType.movie ? '/movies' : '/series';
     final targetPage = page ?? this.page;
     if (search != null) {
-      return Uri(
-        path: '$base/search/${Uri.encodeComponent(search!)}',
-        queryParameters: targetPage > 1 ? {'page': '$targetPage'} : null,
-      ).toString();
+      return Uri(path: '$base/search/${Uri.encodeComponent(search!)}', queryParameters: targetPage > 1 ? {'page': '$targetPage'} : null).toString();
     }
     final params = {
       'genre': ?genre,
@@ -149,22 +144,29 @@ class CatalogQuery {
       'actor': ?actor,
       if (sort == SortOption.topRated) 'sort': 'top_rated',
       if (sort == SortOption.oldest) 'sort': 'oldest',
+      if (bgAudio) 'audio': 'bg',
       if (targetPage > 1) 'page': '$targetPage',
     };
     return Uri(path: base, queryParameters: params.isEmpty ? null : params).toString();
   }
 
-  CatalogQuery copyWith({String? Function()? genre, String? Function()? year, String? Function()? actor, SortOption? Function()? sort}) =>
-      CatalogQuery(
-        type: type,
-        genre: genre != null ? genre() : this.genre,
-        year: year != null ? year() : this.year,
-        actor: actor != null ? actor() : this.actor,
-        sort: sort != null ? sort() : this.sort,
-        search: search,
-        // Any filter change starts over from page 1.
-        page: 1,
-      );
+  CatalogQuery copyWith({
+    String? Function()? genre,
+    String? Function()? year,
+    String? Function()? actor,
+    SortOption? Function()? sort,
+    bool? bgAudio,
+  }) => CatalogQuery(
+    type: type,
+    genre: genre != null ? genre() : this.genre,
+    year: year != null ? year() : this.year,
+    actor: actor != null ? actor() : this.actor,
+    sort: sort != null ? sort() : this.sort,
+    bgAudio: bgAudio ?? this.bgAudio,
+    search: search,
+    // Any filter change starts over from page 1.
+    page: 1,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -174,9 +176,10 @@ class CatalogQuery {
       other.year == year &&
       other.actor == actor &&
       other.sort == sort &&
+      other.bgAudio == bgAudio &&
       other.search == search &&
       other.page == page;
 
   @override
-  int get hashCode => Object.hash(type, genre, year, actor, sort, search, page);
+  int get hashCode => Object.hash(type, genre, year, actor, sort, bgAudio, search, page);
 }

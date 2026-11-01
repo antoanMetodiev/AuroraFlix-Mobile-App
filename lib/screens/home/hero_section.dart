@@ -21,10 +21,10 @@ import 'hero_background.dart';
 
 const _swipeThreshold = 50.0;
 
-/// The homepage hero (website: HeroSection, phone layout): trending trailers
-/// playing behind the current title's logo, synopsis, chips and actions;
-/// prev/next with a 01 / 20 counter and a mute toggle; and the strip of
-/// trailer thumbnails along the bottom. Swipe sideways to switch.
+/// The homepage hero (website: HeroSection, phone layout): a slideshow of
+/// each trending title's stills behind its logo, synopsis, chips and
+/// actions; prev/next with a 01 / 20 counter; and the strip of title
+/// thumbnails along the bottom. Swipe sideways to switch.
 class HeroSection extends ConsumerStatefulWidget {
   const HeroSection({super.key, required this.items});
 
@@ -36,21 +36,16 @@ class HeroSection extends ConsumerStatefulWidget {
 
 class _HeroSectionState extends ConsumerState<HeroSection> {
   int _index = 0;
-  bool _muted = true;
-  bool _videoReady = false;
 
-  /// The playing trailer's progress (0–1). A notifier, not state: it ticks
-  /// every 250ms, and as state each tick rebuilt the whole hero — trailer
-  /// WebView and rail included. Only the rail's bar listens to it.
+  /// How far the current title's slideshow has got (0–1). A notifier, not
+  /// state: it ticks every 250ms, and as state each tick would rebuild the
+  /// whole hero, rail included. Only the rail's bar listens to it.
   final _progress = ValueNotifier<double>(0);
 
   void _goTo(int index) {
     final count = widget.items.length;
     _progress.value = 0;
-    setState(() {
-      _videoReady = false;
-      _index = ((index % count) + count) % count;
-    });
+    setState(() => _index = ((index % count) + count) % count);
   }
 
   @override
@@ -112,16 +107,12 @@ class _HeroSectionState extends ConsumerState<HeroSection> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    // The trailer is an embedded player; a remote's focus
-                    // landing inside it could never get back out.
                     ExcludeFocus(
                       child: HeroBackground(
-                        key: ValueKey((record.id, onScreen)),
+                        key: ValueKey(record.id),
                         record: record,
-                        showVideo: onScreen,
-                        muted: _muted,
+                        active: onScreen,
                         onEnded: _next,
-                        onReady: () => setState(() => _videoReady = true),
                         onProgress: (value) => _progress.value = value,
                       ),
                     ),
@@ -174,13 +165,6 @@ class _HeroSectionState extends ConsumerState<HeroSection> {
                         ),
                         const SizedBox(width: 8),
                         _RoundButton(icon: LucideIcons.chevronRight, label: t('hero.next'), onTap: _next),
-                        const Spacer(),
-                        _MuteButton(
-                          muted: _muted,
-                          enabled: _videoReady,
-                          label: _muted ? t('hero.unmute') : t('hero.mute'),
-                          onTap: () => setState(() => _muted = !_muted),
-                        ),
                       ],
                     ),
                     const SizedBox(height: 10),
@@ -344,57 +328,12 @@ class _RoundButton extends StatelessWidget {
   }
 }
 
-/// On phones the hero offers only mute/unmute (volume is the hardware
-/// buttons' job), inert until the trailer is actually playing.
-class _MuteButton extends StatelessWidget {
-  const _MuteButton({required this.muted, required this.enabled, required this.label, required this.onTap});
-
-  final bool muted;
-  final bool enabled;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedOpacity(
-      opacity: enabled ? 1 : 0.4,
-      duration: const Duration(milliseconds: 200),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-        ),
-        child: _RoundIcon(icon: muted ? LucideIcons.volumeX : LucideIcons.volume2, label: label, onTap: enabled ? onTap : null),
-      ),
-    );
-  }
-}
-
-class _RoundIcon extends StatelessWidget {
-  const _RoundIcon({required this.icon, required this.label, required this.onTap});
-
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Pressable(
-      onTap: onTap,
-      semanticLabel: label,
-      child: SizedBox(width: 36, height: 36, child: Icon(icon, size: 18, color: Colors.white)),
-    );
-  }
-}
-
 const _thumbWidth = 112.0;
 const _thumbGap = 10.0;
 
-/// The strip of trailers along the bottom: each title's backdrop, the
-/// playing one lit up with a bar filling as its trailer plays; scrolls
-/// sideways and keeps the playing card centred.
+/// The strip of titles along the bottom: each title's backdrop, the current
+/// one lit up with a bar filling as its slideshow runs; scrolls sideways and
+/// keeps the current card centred.
 class _TrailerRail extends ConsumerStatefulWidget {
   const _TrailerRail({required this.items, required this.currentIndex, required this.progress, required this.onSelect});
 

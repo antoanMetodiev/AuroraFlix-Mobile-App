@@ -47,7 +47,7 @@ class _DiscoverFiltersState extends ConsumerState<DiscoverFiltersBar> {
   Widget build(BuildContext context) {
     final t = ref.watch(translatorProvider);
     final query = _query;
-    final activeCount = [query.genre, query.year, query.actor, query.sort].where((value) => value != null).length;
+    final activeCount = [query.genre, query.year, query.actor, query.sort, if (query.bgAudio) true].where((value) => value != null).length;
 
     final sortValue = switch (query.sort) {
       SortOption.topRated => 'top_rated',
@@ -91,11 +91,7 @@ class _DiscoverFiltersState extends ConsumerState<DiscoverFiltersBar> {
                         decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.fg(0.25)),
                         child: Text(
                           '$activeCount',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: _open ? AppColors.onWhite : AppColors.foreground,
-                          ),
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _open ? AppColors.onWhite : AppColors.foreground),
                         ),
                       ),
                     ],
@@ -118,10 +114,7 @@ class _DiscoverFiltersState extends ConsumerState<DiscoverFiltersBar> {
                         ModernSelect(
                           expand: true,
                           value: query.genre ?? '',
-                          options: [
-                            SelectOption('', t('filters.allGenres')),
-                            for (final genre in allGenres) SelectOption(genre, t.genre(genre)),
-                          ],
+                          options: [SelectOption('', t('filters.allGenres')), for (final genre in allGenres) SelectOption(genre, t.genre(genre))],
                           onChanged: (value) => _navigate(query.copyWith(genre: () => value.isEmpty ? null : value)),
                         ),
                         const SizedBox(height: 12),
@@ -153,6 +146,14 @@ class _DiscoverFiltersState extends ConsumerState<DiscoverFiltersBar> {
                             ),
                           ),
                         ),
+                        // Only movies carry the flag so far (ZenoPlay's БГ Аудио category).
+                        if (query.type == RecordType.movie) ...[
+                          const SizedBox(height: 12),
+                          _BgAudioToggle(
+                            on: query.bgAudio,
+                            onTap: () => _navigate(query.copyWith(bgAudio: !query.bgAudio)),
+                          ),
+                        ],
                         const SizedBox(height: 12),
                         _ActorField(
                           type: query.type,
@@ -189,6 +190,7 @@ class _DiscoverFiltersState extends ConsumerState<DiscoverFiltersBar> {
                       label: '${t('filters.actor')}: ${query.actor}',
                       onRemove: () => _navigate(query.copyWith(actor: () => null)),
                     ),
+                  if (query.bgAudio) _FilterChip(label: t('filters.bgAudio'), onRemove: () => _navigate(query.copyWith(bgAudio: false))),
                   if (query.sort != null)
                     _FilterChip(
                       label: query.sort == SortOption.topRated ? t('filters.sortTopRated') : t('filters.sortOldest'),
@@ -206,6 +208,43 @@ class _DiscoverFiltersState extends ConsumerState<DiscoverFiltersBar> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// The "БГ аудио" pill — white while on, like the website's toggle.
+class _BgAudioToggle extends ConsumerWidget {
+  const _BgAudioToggle({required this.on, required this.onTap});
+
+  final bool on;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(translatorProvider);
+    final color = on ? AppColors.onWhite : AppColors.fg(0.8);
+    return Pressable(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: on ? Colors.white : AppColors.fg(0.05),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: on ? Colors.transparent : AppColors.fg(0.1)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.audioLines, size: 15, color: color),
+            const SizedBox(width: 8),
+            Text(
+              t('filters.bgAudio'),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: color),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -333,12 +372,7 @@ class _ActorFieldState extends ConsumerState<_ActorField> {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppColors.fg(0.1)),
                       boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.45),
-                          blurRadius: 50,
-                          spreadRadius: -12,
-                          offset: const Offset(0, 20),
-                        ),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.45), blurRadius: 50, spreadRadius: -12, offset: const Offset(0, 20)),
                       ],
                     ),
                     child: ListView.builder(

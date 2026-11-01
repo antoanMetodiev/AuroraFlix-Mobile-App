@@ -13,13 +13,12 @@ import 'hero_section.dart';
 import 'home_data.dart';
 import 'home_scroll.dart';
 import 'last_viewed_section.dart';
-import 'popular_carousels.dart';
 // PAYMENTS DISABLED: import 'pricing_section.dart';
 import 'trending_showcase.dart';
 
 /// The home screen — the website's app/page.tsx, section for section and in
-/// the same order: hero, pricing, last viewed, trending showcase, popular
-/// coverflows, cult rows, footer.
+/// the same order: hero, pricing, last viewed, trending showcase, cult rows,
+/// footer.
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -57,7 +56,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final hero = ref.watch(heroItemsProvider);
     final trending = ref.watch(trendingProvider).value;
-    final popular = ref.watch(popularProvider).value;
     final padding = shellContentPadding(context);
 
     return ColoredBox(
@@ -68,7 +66,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         edgeOffset: padding.top,
         onRefresh: () async {
           ref.invalidate(trendingProvider);
-          ref.invalidate(popularProvider);
           await ref.read(heroItemsProvider.future);
         },
         child: ListView(
@@ -86,7 +83,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // PricingSection(key: _pricingKey),
             const RevealOnScroll(child: LastViewedSection()),
             if (trending != null) TrendingShowcase(movies: trending.movies, series: trending.series),
-            if (popular != null) PopularCarousels(movies: popular.movies, series: popular.series),
             const CultSection(),
             const SiteFooter(),
           ],

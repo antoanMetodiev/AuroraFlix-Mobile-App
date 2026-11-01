@@ -15,12 +15,15 @@ extension on SortOption {
 }
 
 class DiscoverFilters {
-  const DiscoverFilters({this.genre, this.year, this.actor, this.sort});
+  const DiscoverFilters({this.genre, this.year, this.actor, this.sort, this.bgAudio = false});
 
   final String? genre;
   final String? year;
   final String? actor;
   final SortOption? sort;
+
+  /// Only titles with a Bulgarian dub (movies; the series service ignores it).
+  final bool bgAudio;
 }
 
 class CatalogApi {
@@ -48,12 +51,17 @@ class CatalogApi {
     'year': filters.year,
     'actorName': filters.actor,
     'sort': filters.sort?.param,
+    'audio': filters.bgAudio ? 'bg' : null,
     'page': page - 1,
     'size': pageSize,
   });
 
-  Future<int> discoverCount(RecordType type, DiscoverFilters filters) =>
-      _count('/discover-${_segment(type)}-count', {'genre': filters.genre, 'year': filters.year, 'actorName': filters.actor});
+  Future<int> discoverCount(RecordType type, DiscoverFilters filters) => _count('/discover-${_segment(type)}-count', {
+    'genre': filters.genre,
+    'year': filters.year,
+    'actorName': filters.actor,
+    'audio': filters.bgAudio ? 'bg' : null,
+  });
 
   Future<List<CinemaRecord>> searchByTitle(RecordType type, String title) =>
       _records(type == RecordType.movie ? '/get-movies-by-title' : '/get-series-by-title', type, {'title': title});
@@ -93,8 +101,7 @@ class CatalogApi {
   }
 
   /// Asks the series generator to look for episodes that came out since.
-  Future<void> checkForNewEpisodes(String id, String title) =>
-      _api.send('POST', '/check-for-new-episodes', body: {'id': id, 'title': title});
+  Future<void> checkForNewEpisodes(String id, String title) => _api.send('POST', '/check-for-new-episodes', body: {'id': id, 'title': title});
 }
 
 final catalogApiProvider = Provider<CatalogApi>((ref) => CatalogApi(ref.watch(apiClientProvider)));

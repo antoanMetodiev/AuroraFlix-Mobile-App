@@ -47,53 +47,6 @@ List<RankedItem> rankTrending(List<CinemaRecord> records) {
   return [for (var i = 0; i < withPosters.length; i++) RankedItem(record: withPosters[i], rank: i + 1)];
 }
 
-const _popularCount = 12;
-const _windowMonths = 12;
-
-/// TMDB averages from a handful of votes can sit at a perfect 10 above
-/// everything real — anything this high is treated as noise.
-const _maxTrustedRating = 9.5;
-
-String _isoDate(DateTime date) => date.toIso8601String().substring(0, 10);
-
-/// Website: PopularSection's pickPopular — best-rated titles released in
-/// the last 12 months, deduplicated, top 12.
-List<CinemaRecord> _pickPopular(List<CinemaRecord> records) {
-  final now = DateTime.now().toUtc();
-  final today = _isoDate(now);
-  final since = _isoDate(DateTime.utc(now.year, now.month - _windowMonths, now.day));
-
-  final eligible = records.where((record) {
-    final rating = double.tryParse(record.tmdbRating);
-    final released = record.releaseDate ?? '';
-    return record.tmdbId != null &&
-        record.posterImgURL != null &&
-        rating != null &&
-        rating > 0 &&
-        rating < _maxTrustedRating &&
-        released.compareTo(since) >= 0 &&
-        released.compareTo(today) <= 0;
-  }).toList()..sort((a, b) => double.parse(b.tmdbRating).compareTo(double.parse(a.tmdbRating)));
-
-  final seen = <String>{};
-  return eligible.where((record) => seen.add(record.tmdbId!)).take(_popularCount).toList();
-}
-
-final popularProvider = FutureProvider<({List<CinemaRecord> movies, List<CinemaRecord> series})>((ref) async {
-  final api = ref.watch(catalogApiProvider);
-  final year = DateTime.now().toUtc().year;
-  DiscoverFilters filters(int y) => DiscoverFilters(sort: SortOption.topRated, year: '$y');
-
-  final results = await Future.wait([
-    api.discover(RecordType.movie, filters(year), 1),
-    api.discover(RecordType.movie, filters(year - 1), 1),
-    api.discover(RecordType.series, filters(year), 1),
-    api.discover(RecordType.series, filters(year - 1), 1),
-  ]);
-
-  return (movies: _pickPopular([...results[0], ...results[1]]), series: _pickPopular([...results[2], ...results[3]]));
-});
-
 /// The hand-picked "Cult Movies / Cult Shows" rows — same titles and images
 /// as the website's lib/data/home-marquee.ts (images bundled in assets/).
 class MarqueeItem {

@@ -1,185 +1,127 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:youtube_player_iframe/youtube_player_iframe.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/api/catalog_api.dart';
 import '../../core/theme.dart';
 import '../../core/tmdb.dart';
 import '../../models/models.dart';
 import '../../widgets/fade_in_image.dart';
 
-String? _youTubeId(String? url) => RegExp(r'(?:youtu\.be/|youtube\.com/watch\?v=)([\w-]+)').firstMatch(url ?? '')?.group(1);
+/// How long each still stays up before the next fades in.
+const _slide = Duration(seconds: 6);
 
-/// How often the trailer's playback position is reported to the parent.
-const _progressPoll = Duration(milliseconds: 250);
+/// The cross-fade between two stills.
+const _fade = Duration(milliseconds: 1500);
 
-/// Once playback starts, how long before the video replaces the backdrop —
-/// the website's 1200ms reveal delay, which hides YouTube's own start-up flash.
-const _revealDelay = Duration(milliseconds: 1200);
+/// Stills per title: its own backdrop plus up to four more from the catalog.
+const _maxSlides = 5;
 
-/// On the first trailer of a visit, how long the backdrop shows alone before
-/// the YouTube player is even created — its WebView and ~1 MB of player JS
-/// otherwise compete with the rest of the home screen for the network and
-/// CPU while it loads (the website waits the same after its load event).
-const _firstPlayerDelay = Duration(milliseconds: 2500);
+/// How long a title stays in the hero before moving on to the next one.
+final _titleMs = _slide.inMilliseconds * _maxSlides;
 
-/// Once the first player was allowed, later ones (each title switch remounts
-/// HeroBackground) start straight away.
-bool _playerUnlocked = false;
+const _tick = Duration(milliseconds: 250);
 
-/// The hero's moving background (website: HeroBackground): the title's
-/// backdrop first, then — once its YouTube trailer is actually playing,
-/// muted — the trailer, cropped to cover the whole hero. Remounted per title
-/// by the parent, so the fade/zoom entrance plays on every switch.
-class HeroBackground extends StatefulWidget {
-  const HeroBackground({
-    super.key,
-    required this.record,
-    required this.muted,
-    required this.onEnded,
-    required this.onReady,
-    required this.onProgress,
-    this.showVideo = true,
-  });
+/// The hero's backdrop (website: HeroBackground): a slideshow of the title's
+/// own stills, cross-fading every 6s with a slow zoom — in place of the
+/// YouTube trailers it used to play. It opens on the trending row's backdrop
+/// at once; the rest come from the catalog record (get-movie-details /
+/// get-series-details), each shown only once it has loaded. After 30s the
+/// parent moves on. Remounted per title by the parent, so the entrance plays
+/// on every switch.
+class HeroBackground extends ConsumerStatefulWidget {
+  const HeroBackground({super.key, required this.record, required this.onEnded, required this.onProgress, this.active = true});
 
   final CinemaRecord record;
-  final bool muted;
   final VoidCallback onEnded;
 
-  /// The player is up and showing — the parent's mute button stays disabled
-  /// until then.
-  final VoidCallback onReady;
-
-  /// 0–1 share of the trailer played so far.
+  /// 0–1 share of this title's time in the hero.
   final ValueChanged<double> onProgress;
 
   /// False while the home screen isn't on screen (another tab, a details
-  /// page on top) — just the backdrop then, no trailer playing unseen.
-  final bool showVideo;
+  /// page on top) — the clock stands still then.
+  final bool active;
 
   @override
-  State<HeroBackground> createState() => _HeroBackgroundState();
+  ConsumerState<HeroBackground> createState() => _HeroBackgroundState();
 }
 
-class _HeroBackgroundState extends State<HeroBackground> with SingleTickerProviderStateMixin {
+class _HeroBackgroundState extends ConsumerState<HeroBackground> with SingleTickerProviderStateMixin {
   late final AnimationController _entrance = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..forward();
 
-  YoutubePlayerController? _player;
-  StreamSubscription<YoutubePlayerValue>? _subscription;
-  Timer? _revealTimer;
-  Timer? _progressTimer;
-  Timer? _unlockTimer;
-  bool _videoReady = false;
+  late final List<String> _slides = [?tmdbImage(widget.record.backgroundImgURL, TmdbSize.w1280)];
+  Timer? _clock;
+  int _elapsed = 0;
   bool _ended = false;
 
   @override
   void initState() {
     super.initState();
-    final videoId = _youTubeId(widget.record.trailerVideoURL);
-    if (videoId == null || !widget.showVideo) return;
+    _clock = Timer.periodic(_tick, (_) => _onTick());
+    _loadMoreStills();
+  }
 
-    if (_playerUnlocked) {
-      _startPlayer(videoId);
+  /// Trending movie rows carry the TMDB id as movieId, series as tmdbId.
+  String? get _tmdbId => widget.record.tmdbId ?? widget.record.movieId;
+
+  Future<void> _loadMoreStills() async {
+    final id = _tmdbId;
+    if (id == null) return;
+    try {
+      final details = await ref.read(catalogApiProvider).details(widget.record.type, id);
+      if (!mounted || details == null) return;
+      final seen = {widget.record.backgroundImgURL};
+      final extra = details.imagesList
+          .where((image) => image.imageType == ImageType.backdrop && image.imageURL.isNotEmpty && seen.add(image.imageURL))
+          .take(_maxSlides - 1)
+          .map((image) => tmdbImage(image.imageURL, TmdbSize.w1280))
+          .whereType<String>();
+      for (final url in extra) {
+        // Only once it's decoded, so a slide never fades in half-drawn.
+        unawaited(
+          precacheImage(_provider(url), context)
+              .then((_) {
+                if (mounted && !_slides.contains(url)) setState(() => _slides.add(url));
+              })
+              .catchError((_) {}),
+        );
+      }
+    } catch (_) {
+      // No catalog record / offline — the one backdrop stays.
+    }
+  }
+
+  /// The same image provider AuroraImage ends up using for this URL.
+  ImageProvider _provider(String url) {
+    if (!kIsWeb) return CachedNetworkImageProvider(url);
+    final uri = Uri.parse(url);
+    return NetworkImage(uri.replace(queryParameters: {...uri.queryParameters, 'app': '1'}).toString());
+  }
+
+  void _onTick() {
+    if (!widget.active || _ended) return;
+    final before = (_active, _settled);
+    _elapsed += _tick.inMilliseconds;
+    widget.onProgress((_elapsed / _titleMs).clamp(0, 1).toDouble());
+    if (_elapsed >= _titleMs) {
+      _ended = true;
+      widget.onEnded();
       return;
     }
-    _unlockTimer = Timer(_firstPlayerDelay, () {
-      _playerUnlocked = true;
-      if (mounted) setState(() => _startPlayer(videoId));
-    });
+    if ((_active, _settled) != before) setState(() {});
   }
 
-  void _startPlayer(String videoId) {
-    final player = YoutubePlayerController.fromVideoId(
-      videoId: videoId,
-      autoPlay: true,
-      params: const YoutubePlayerParams(
-        mute: true,
-        showControls: false,
-        showFullscreenButton: false,
-        enableCaption: false,
-        showVideoAnnotations: false,
-        strictRelatedVideos: true,
-        playsInline: true,
-        pointerEvents: PointerEvents.none,
-      ),
-    );
-    _player = player;
-    _subscription = player.stream.listen(_onPlayerValue);
-    // On Android / iOS the package's YoutubePlayer widget draws its WebView
-    // in an overlay above the whole app (it covered the screen and took the
-    // scrolling) — so there we load the player ourselves and show its
-    // WebView in place, cropped like on the web.
-    if (!kIsWeb) player.initWithParams(params: player.params);
-  }
+  /// The previous still has finished fading out.
+  bool get _settled => _elapsed % _slide.inMilliseconds >= _fade.inMilliseconds;
 
-  void _onPlayerValue(YoutubePlayerValue value) {
-    switch (value.playerState) {
-      case PlayerState.playing:
-        _onPlaying();
-      case PlayerState.ended:
-        _onEnded();
-      default:
-        break;
-    }
-  }
-
-  void _onPlaying() {
-    if (_revealTimer != null) return;
-    _revealTimer = Timer(_revealDelay, () {
-      if (!mounted) return;
-      setState(() => _videoReady = true);
-      _applyMute();
-      widget.onReady();
-      if (_player != null) _progressTimer = Timer.periodic(_progressPoll, (_) => _reportProgress());
-    });
-  }
-
-  void _onEnded() {
-    if (_ended) return;
-    _ended = true;
-    widget.onEnded();
-  }
-
-  Future<void> _reportProgress() async {
-    final player = _player;
-    if (player == null) return;
-    try {
-      final duration = await player.duration;
-      final current = await player.currentTime;
-      if (mounted && duration > 0) widget.onProgress((current / duration).clamp(0, 1).toDouble());
-    } catch (_) {
-      // The player can disappear mid-call when the title switches.
-    }
-  }
-
-  void _applyMute() {
-    final player = _player;
-    if (player == null || !_videoReady) return;
-    if (widget.muted) {
-      player.mute();
-    } else {
-      player.unMute();
-      // Some mobile browsers pause an autoplayed-muted video on unMute()
-      // instead of just unmuting it — nudge it back into play.
-      player.playVideo();
-    }
-  }
-
-  @override
-  void didUpdateWidget(HeroBackground oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.muted != widget.muted) _applyMute();
-  }
+  int get _active => _slides.isEmpty ? 0 : (_elapsed ~/ _slide.inMilliseconds) % _slides.length;
 
   @override
   void dispose() {
-    _unlockTimer?.cancel();
-    _revealTimer?.cancel();
-    _progressTimer?.cancel();
-    _subscription?.cancel();
-    _player?.close();
+    _clock?.cancel();
     _entrance.dispose();
     super.dispose();
   }
@@ -187,7 +129,9 @@ class _HeroBackgroundState extends State<HeroBackground> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     final curved = CurvedAnimation(parent: _entrance, curve: auroraEase);
-    final player = _player;
+    final active = _active;
+    // The still fading out keeps its zoom until it's gone, then resets.
+    final previous = _slides.isEmpty || _settled ? -1 : (active - 1 + _slides.length) % _slides.length;
 
     return FadeTransition(
       opacity: curved,
@@ -198,50 +142,24 @@ class _HeroBackgroundState extends State<HeroBackground> with SingleTickerProvid
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // The trailer sits underneath and is always painted: a platform
-              // view at opacity 0 is never created on the web, so it could
-              // never start. The backdrop covers it until it plays.
-              if (player != null)
-                IgnorePointer(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      // Cover: as wide as needed for a 16:9 frame to fill
-                      // the whole hero, cropped at the sides.
-                      final width = constraints.maxWidth > constraints.maxHeight * 16 / 9
-                          ? constraints.maxWidth
-                          : constraints.maxHeight * 16 / 9;
-                      return ClipRect(
-                        child: OverflowBox(
-                          maxWidth: width,
-                          maxHeight: width * 9 / 16,
-                          child: SizedBox(
-                            width: width,
-                            height: width * 9 / 16,
-                            child: kIsWeb
-                                ? YoutubePlayer(
-                                    controller: player,
-                                    aspectRatio: 16 / 9,
-                                    enableFullScreenOnVerticalDrag: false,
-                                    autoFullScreen: false,
-                                    backgroundColor: Colors.black,
-                                  )
-                                : WebViewWidget(controller: player.webViewController),
-                          ),
-                        ),
-                      );
-                    },
+              for (var i = 0; i < _slides.length; i++)
+                AnimatedOpacity(
+                  key: ValueKey(_slides[i]),
+                  opacity: i == active ? 1 : 0,
+                  duration: _fade,
+                  curve: Curves.easeInOut,
+                  child: ClipRect(
+                    child: AnimatedScale(
+                      scale: i == active || i == previous ? 1.08 : 1.0,
+                      // Zooms in slowly while up; snaps back once faded out.
+                      duration: i == active ? _slide + _fade : Duration.zero,
+                      curve: Curves.linear,
+                      child: AuroraImage(url: _slides[i]),
+                    ),
                   ),
                 ),
-              AnimatedOpacity(
-                opacity: _videoReady ? 0 : 1,
-                duration: const Duration(milliseconds: 300),
-                child: ColoredBox(
-                  color: Colors.black,
-                  child: AuroraImage(url: tmdbImage(widget.record.backgroundImgURL, TmdbSize.w1280)),
-                ),
-              ),
-              // Dims the backdrop and the trailer alike (z-10 on the site).
-              IgnorePointer(child: ColoredBox(color: Colors.black.withValues(alpha: 0.5))),
+              // Dims the stills (z-10 on the site).
+              IgnorePointer(child: ColoredBox(color: Colors.black.withValues(alpha: 0.45))),
             ],
           ),
         ),
