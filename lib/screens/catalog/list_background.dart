@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
 /// The movies / series lists' background — the website's ListBackground (genre
-/// and title-search results included): no image, just a dark gradient — a
-/// charcoal glow over the top melting into black further down, with a light
-/// vignette.
+/// and title-search results included): no image, just a soft dark gradient —
+/// a faint charcoal glow at the top melting into black, with a vignette.
 class ListBackground extends StatelessWidget {
   const ListBackground({super.key});
 
@@ -17,19 +16,18 @@ class ListBackground extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFF262626), Color(0xFF121212), Color(0xFF000000)],
-              stops: [0, 0.55, 1],
+              colors: [Color(0xFF161616), Color(0xFF080808), Color(0xFF000000)],
             ),
           ),
         ),
-        // The site's white glow from the top centre.
+        // The site's faint white glow from the top centre.
         DecoratedBox(
           decoration: BoxDecoration(
             gradient: RadialGradient(
               center: Alignment.topCenter,
-              radius: 1.3,
-              colors: [Color(0x1AFFFFFF), Color(0x00FFFFFF)],
-              stops: [0, 0.75],
+              radius: 0.9,
+              colors: [Color(0x0FFFFFFF), Color(0x00FFFFFF)],
+              stops: [0, 0.7],
             ),
           ),
         ),
@@ -38,8 +36,8 @@ class ListBackground extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: RadialGradient(
               radius: 1.1,
-              colors: [Color(0x00000000), Color(0xB3000000)],
-              stops: [0.55, 1],
+              colors: [Color(0x00000000), Color(0xD9000000)],
+              stops: [0.4, 1],
             ),
           ),
         ),
