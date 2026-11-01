@@ -40,6 +40,9 @@ class CinemaRecordCard extends ConsumerWidget {
             color: const Color(0xFF171717),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            // A soft light glow (website: the card's shadow) — the lists are
+            // plain black, where a dark shadow wouldn't show.
+            boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.14), blurRadius: 32, spreadRadius: -8, offset: const Offset(0, 10))],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(15),
