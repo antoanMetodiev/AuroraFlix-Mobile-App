@@ -16,6 +16,7 @@ import '../../widgets/rating_ring.dart';
 import '../../widgets/record_actions.dart';
 import '../../widgets/reveal.dart';
 import '../../widgets/section_heading.dart';
+import '../../widgets/video_width.dart';
 import '../../widgets/watch_now_button.dart';
 
 /// The top of a title page (website: DetailsHeader): a cinematic backdrop
@@ -238,17 +239,22 @@ class TrailerSection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SectionHeading(t('sections.trailer')),
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF050505),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.55), blurRadius: 60, offset: const Offset(0, 20))],
+          Center(
+            child: SizedBox(
+              width: wideVideoWidth(context),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF050505),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.55), blurRadius: 60, offset: const Offset(0, 20))],
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: EmbedFrame(url: embedUrl),
+                ),
               ),
-              clipBehavior: Clip.antiAlias,
-              child: EmbedFrame(url: embedUrl),
             ),
           ),
         ],
@@ -291,8 +297,12 @@ class CastSection extends ConsumerWidget {
                   clipBehavior: Clip.none,
                   itemCount: cast.length,
                   separatorBuilder: (context, index) => const SizedBox(width: 16),
-                  itemBuilder: (context, index) =>
-                      _ActorCard(actor: cast[index], backgroundPath: backgroundPath, width: cardWidth, ageLabel: (age) => t('actor.ageShort', {'age': age})),
+                  itemBuilder: (context, index) => _ActorCard(
+                    actor: cast[index],
+                    backgroundPath: backgroundPath,
+                    width: cardWidth,
+                    ageLabel: (age) => t('actor.ageShort', {'age': age}),
+                  ),
                 ),
               ),
             ],
@@ -432,7 +442,8 @@ class _ImageGalleryState extends ConsumerState<ImageGallery> {
                     value: _type,
                     labels: {ImageType.backdrop: t('sections.backdrops'), ImageType.poster: t('sections.posters')},
                     counts: {
-                      for (final type in const [ImageType.backdrop, ImageType.poster]) type: widget.images.where((image) => image.imageType == type).length,
+                      for (final type in const [ImageType.backdrop, ImageType.poster])
+                        type: widget.images.where((image) => image.imageType == type).length,
                     },
                     onChanged: (type) => setState(() {
                       _type = type;

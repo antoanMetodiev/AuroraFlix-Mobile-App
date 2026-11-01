@@ -1,7 +1,7 @@
 name: auroraflix
 description: "AuroraFlix — movies & series streaming app for Android, iOS and TV."
 publish_to: 'none'
-version: 0.3.7+13
+version: 0.3.8+14
 
 environment:
   sdk: ^3.13.2

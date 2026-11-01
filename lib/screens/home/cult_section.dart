@@ -11,8 +11,10 @@ import '../../widgets/reveal.dart';
 import '../../widgets/section_heading.dart';
 import 'home_data.dart';
 
-const _cardWidth = 150.0;
 const _gap = 16.0;
+
+/// The website's w-[150px] sm:w-[180px] lg:w-[215px].
+double _cardWidthFor(double screenWidth) => screenWidth >= 1024 ? 215 : (screenWidth >= 640 ? 180 : 150);
 
 /// "Cult Movies" / "Cult Shows" (website: TrendingSection): two endless
 /// poster rows of hand-picked titles, sliding in opposite directions with
@@ -49,8 +51,9 @@ class _CultBlock extends StatelessWidget {
     // One loop = one copy of the row; the site scrolls a doubled row by
     // 50% in 80s, i.e. one copy per 80s.
     const period = Duration(seconds: 80);
+    final cardWidth = _cardWidthFor(MediaQuery.sizeOf(context).width);
     // Poster (2:3) + gap + title line.
-    const rowHeight = _cardWidth * 3 / 2 + 8 + 24 + 16;
+    final rowHeight = cardWidth * 3 / 2 + 8 + 24 + 16;
 
     return InViewOnce(
       builder: (context, inView) => Reveal(
@@ -66,11 +69,11 @@ class _CultBlock extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Marquee(
                     itemCount: items.length,
-                    itemExtent: _cardWidth,
+                    itemExtent: cardWidth,
                     spacing: _gap,
                     period: period,
                     reverse: reverse,
-                    itemBuilder: (context, index) => _CultCard(item: items[index]),
+                    itemBuilder: (context, index) => _CultCard(item: items[index], width: cardWidth),
                   ),
                 ),
               ),
@@ -83,9 +86,10 @@ class _CultBlock extends StatelessWidget {
 }
 
 class _CultCard extends StatelessWidget {
-  const _CultCard({required this.item});
+  const _CultCard({required this.item, required this.width});
 
   final MarqueeItem item;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
@@ -94,8 +98,8 @@ class _CultCard extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: _cardWidth,
-            height: _cardWidth * 3 / 2,
+            width: width,
+            height: width * 3 / 2,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.2), blurRadius: 22)],

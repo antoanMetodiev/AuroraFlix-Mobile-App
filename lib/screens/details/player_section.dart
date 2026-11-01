@@ -20,6 +20,7 @@ import '../../widgets/fade_in_image.dart';
 import '../../widgets/loader.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/reveal.dart';
+import '../../widgets/video_width.dart';
 import 'player_urls.dart';
 
 /// Our own Bulgarian subtitles for a movie or one episode, if the subtitles
@@ -315,12 +316,13 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
                   uploadButton: 'Upload Subtitle',
                   stepImages: const {2: 'assets/player-guide/cinesrc-cc.webp'},
                 ),
-              // On phones the player runs edge to edge, past the padding.
+              // On phones the player runs edge to edge, past the padding; on
+              // a wide screen (a TV) it's capped so it fits the screen whole.
               SizedBox(
-                height: MediaQuery.sizeOf(context).width * 9 / 16,
+                height: (wideVideoWidth(context) ?? MediaQuery.sizeOf(context).width) * 9 / 16,
                 child: OverflowBox(
-                  maxWidth: MediaQuery.sizeOf(context).width,
-                  minWidth: MediaQuery.sizeOf(context).width,
+                  maxWidth: wideVideoWidth(context) ?? MediaQuery.sizeOf(context).width,
+                  minWidth: wideVideoWidth(context) ?? MediaQuery.sizeOf(context).width,
                   child: AspectRatio(
                     aspectRatio: 16 / 9,
                     child: Container(

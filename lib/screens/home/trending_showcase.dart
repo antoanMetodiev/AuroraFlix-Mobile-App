@@ -22,9 +22,10 @@ const _sky500 = Color(0xFF0EA5E9);
 /// each other instead of moving in lockstep.
 const _columnPeriods = [46, 54, 50];
 
-/// "Trending Movies" / "Trending Series" (website: TrendingShowcase, phone
-/// layout): eyebrow, heading, the scrollable ranked list, then two endless
-/// poster columns sliding in opposite directions.
+/// "Trending Movies" / "Trending Series" (website: TrendingShowcase):
+/// eyebrow, heading, the scrollable ranked list, and endless poster columns
+/// sliding in opposite directions — under the list on a phone, beside it on
+/// a wide screen (a TV).
 class TrendingShowcase extends ConsumerWidget {
   const TrendingShowcase({super.key, required this.movies, required this.series});
 
@@ -82,44 +83,86 @@ class _ShowcaseBlock extends ConsumerWidget {
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 56),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.sky.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: AppColors.sky.withValues(alpha: 0.3)),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  // The website's breakpoints: three poster columns from sm,
+                  // and from lg the list and the columns side by side (5:7),
+                  // swapping sides on the second block.
+                  final wide = width >= 1024;
+                  final columnCount = width >= 640 ? 3 : 2;
+                  final intro = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.sky.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: AppColors.sky.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(LucideIcons.flame, size: 14, color: _sky300),
+                            const SizedBox(width: 8),
+                            Text(
+                              t('home.trendingEyebrow'),
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _sky300),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(LucideIcons.flame, size: 14, color: _sky300),
-                          const SizedBox(width: 8),
-                          Text(
-                            t('home.trendingEyebrow'),
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _sky300),
+                      const SizedBox(height: 16),
+                      Text(
+                        heading,
+                        style: display(
+                          TextStyle(
+                            fontSize: wide ? 48 : (width >= 640 ? 36 : 30),
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.6,
+                            color: Colors.white,
                           ),
-                        ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(text, style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.6))),
+                      const SizedBox(height: 32),
+                      _RankedList(items: items),
+                    ],
+                  );
+                  // The same titles as the list — a remote skips them.
+                  final posters = SizedBox(
+                    height: wide ? 640 : (width >= 640 ? 560 : 460),
+                    child: ExcludeFocus(
+                      child: _PosterColumns(items: items, count: columnCount),
+                    ),
+                  );
+                  final padding = EdgeInsets.symmetric(horizontal: wide ? 32 : (width >= 640 ? 24 : 16), vertical: width >= 640 ? 80 : 56);
+
+                  if (!wide) {
+                    return Padding(
+                      padding: padding,
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [intro, const SizedBox(height: 40), posters]),
+                    );
+                  }
+                  final introCell = Expanded(flex: 5, child: intro);
+                  final postersCell = Expanded(flex: 7, child: posters);
+                  return Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1440),
+                      child: Padding(
+                        padding: padding,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: flipped
+                              ? [postersCell, const SizedBox(width: 64), introCell]
+                              : [introCell, const SizedBox(width: 64), postersCell],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      heading,
-                      style: display(const TextStyle(fontSize: 30, fontWeight: FontWeight.w600, letterSpacing: -0.6, color: Colors.white)),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(text, style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.6))),
-                    const SizedBox(height: 32),
-                    _RankedList(items: items),
-                    const SizedBox(height: 40),
-                    // The same titles as the list above — a remote skips them.
-                    SizedBox(height: 460, child: ExcludeFocus(child: _PosterColumns(items: items))),
-                  ],
-                ),
+                  );
+                },
               ),
             ],
           ),
@@ -250,15 +293,17 @@ List<List<RankedItem>> _toColumns(List<RankedItem> items, int count, int minPerC
   ];
 }
 
-/// Two endless poster columns — up, down — faded at the top and bottom.
+/// Endless poster columns — up, down, up — faded at the top and bottom:
+/// two on a phone, three from sm up (website: PosterColumns).
 class _PosterColumns extends StatelessWidget {
-  const _PosterColumns({required this.items});
+  const _PosterColumns({required this.items, this.count = 2});
 
   final List<RankedItem> items;
+  final int count;
 
   @override
   Widget build(BuildContext context) {
-    final columns = _toColumns(items, 2, 4);
+    final columns = _toColumns(items, count, 4);
     const gap = 12.0;
 
     return EdgeFade(

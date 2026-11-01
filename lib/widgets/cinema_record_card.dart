@@ -207,31 +207,52 @@ class CinemaRecordGrid extends ConsumerWidget {
 
     return InViewOnce(
       threshold: 0.05,
-      builder: (context, inView) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            const columns = 2;
-            const gapX = 12.0;
-            final width = (constraints.maxWidth - gapX * (columns - 1)) / columns;
-            return Wrap(
-              spacing: gapX,
-              runSpacing: 24,
-              children: [
-                for (var i = 0; i < records.length; i++)
-                  SizedBox(
-                    width: width,
-                    child: _CardIn(
-                      visible: inView,
-                      delay: _staggerStep * (i < _maxStaggered ? i : _maxStaggered),
-                      // The first two rows load right away, the rest as they scroll in.
-                      child: CinemaRecordCard(record: records[i], lazy: i >= _eagerPosters),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
+      builder: (context, inView) => LayoutBuilder(
+        builder: (context, outer) {
+          // The website's grid-cols-2 sm:3 md:4 lg:5 xl:6, up to 100rem wide
+          // — two columns on a phone, more on a tablet or a TV.
+          final screen = outer.maxWidth;
+          final columns = screen >= 1280
+              ? 6
+              : screen >= 1024
+              ? 5
+              : screen >= 768
+              ? 4
+              : screen >= 640
+              ? 3
+              : 2;
+          final wide = screen >= 640;
+          final gapX = wide ? 20.0 : 12.0;
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1600),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: wide ? 24 : 16, vertical: 8),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final width = (constraints.maxWidth - gapX * (columns - 1)) / columns;
+                    return Wrap(
+                      spacing: gapX,
+                      runSpacing: wide ? 32 : 24,
+                      children: [
+                        for (var i = 0; i < records.length; i++)
+                          SizedBox(
+                            width: width,
+                            child: _CardIn(
+                              visible: inView,
+                              delay: _staggerStep * (i < _maxStaggered ? i : _maxStaggered),
+                              // The first two rows load right away, the rest as they scroll in.
+                              child: CinemaRecordCard(record: records[i], lazy: i >= _eagerPosters),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
