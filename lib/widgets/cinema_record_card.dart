@@ -62,6 +62,42 @@ class CinemaRecordCard extends ConsumerWidget {
                     ),
                   ),
                 ),
+                // Website: the same badge. It has to stay clear of the rating,
+                // and Greek's label is much longer than "БГ аудио".
+                if (record.hasBgAudio)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    right: rating != null ? 56 : 8,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.75),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.35)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Not the site's volume icon: a Shorebird patch can
+                            // only use glyphs already in the release's font.
+                            const Icon(LucideIcons.audioLines, size: 11, color: Color(0xFF38BDF8)),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                t('player.bgAudio'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 if (rating != null)
                   Positioned(
                     top: 8,

@@ -250,11 +250,15 @@ class CinemaRecord {
     this.castList = const [],
     this.imagesList = const [],
     this.allEpisodes = const [],
+    this.hasBgAudio = false,
   });
 
   final String id;
   final RecordType type;
   final String title;
+
+  /// A movie with a Bulgarian dub: the "БГ аудио" badge on the list cards.
+  final bool hasBgAudio;
 
   /// The English title, sent only when [title] is a translation (?lang).
   final String? originalTitle;
@@ -317,5 +321,6 @@ class CinemaRecord {
     castList: _list(json['castList'], Actor.fromJson),
     imagesList: _list(json['imagesList'], MediaImage.fromJson),
     allEpisodes: _list(json['allEpisodes'], Episode.fromJson),
+    hasBgAudio: json['hasBgAudio'] == true,
   );
 }
