@@ -29,7 +29,7 @@ class TvRef extends VidsrcRef {
 }
 
 /// Player ids as on the website: 1 vidsrc2.ru, 2 VidFast, 3 CineSrc,
-/// 4 VidLink, 5 EmbedMaster, 6 VidSpark.
+/// 4 VidLink, 5 EmbedMaster, 6 VidSpark, 7 / 8 БГ аудио.
 typedef ProviderId = int;
 
 /// Default language for the providers' own bundled subtitles.
@@ -65,12 +65,13 @@ const vidfastUiScale = 0.7;
 
 /// 2 — VidFast, in blue, poster first, no title overlay or Chromecast; with
 /// next-episode for series. Its own Bulgarian track.
-String vidfastUrl(VidsrcRef ref) => _withParams('https://vidfast.vc/${_path(ref)}', {
+String vidfastUrl(VidsrcRef ref, {int? startAt}) => _withParams('https://vidfast.vc/${_path(ref)}', {
   'autoPlay': 'true',
   'title': 'false',
   'poster': 'true',
   'theme': '2980B9',
   'chromecast': 'false',
+  if (startAt != null) 'startAt': '$startAt',
   if (ref is TvRef) 'nextButton': 'true',
   if (ref is TvRef) 'autoNext': 'true',
   'sub': _subtitleLang,
@@ -78,17 +79,25 @@ String vidfastUrl(VidsrcRef ref) => _withParams('https://vidfast.vc/${_path(ref)
 });
 
 /// 3 — CineSrc: its own subtitle search, preselecting Bulgarian.
-String cinesrcUrl(VidsrcRef ref) => _withParams('https://cinesrc.st/embed/${ref is TvRef ? 'tv' : 'movie'}/${ref.tmdbId}', {
+String cinesrcUrl(VidsrcRef ref, {int? startAt}) => _withParams('https://cinesrc.st/embed/${ref is TvRef ? 'tv' : 'movie'}/${ref.tmdbId}', {
   'autoplay': 'true',
   'subtitles': 'auto',
   'subtitlelang': _subtitleLang,
+  // Without continueprompt=false it first asks "Continue / Restart", which our
+  // own poster has already answered.
+  if (startAt != null) 't': '$startAt',
+  if (startAt != null) 'continueprompt': 'false',
   if (ref is TvRef) 's': ref.season,
   if (ref is TvRef) 'e': ref.episode,
 });
 
 /// 4 — VidLink: our file in its own player (`sub_file`).
-String vidlinkUrl(VidsrcRef ref, String subtitleUrl) =>
-    _withParams('https://vidlink.pro/${_path(ref)}', {'autoplay': 'true', 'sub_file': subtitleUrl, 'sub_label': 'Български'});
+String vidlinkUrl(VidsrcRef ref, String subtitleUrl, {int? startAt}) => _withParams('https://vidlink.pro/${_path(ref)}', {
+  'autoplay': 'true',
+  'sub_file': subtitleUrl,
+  'sub_label': 'Български',
+  if (startAt != null) 'startAt': '$startAt',
+});
 
 /// 5 — EmbedMaster: best picture; our file in its captions menu.
 String embedmasterUrl(VidsrcRef ref, String subtitleUrl) => _withParams('https://embedmaster.link/${_path(ref)}', {
@@ -99,7 +108,7 @@ String embedmasterUrl(VidsrcRef ref, String subtitleUrl) => _withParams('https:/
 });
 
 /// 6 — VidSpark: plays in a sandbox (no ads); no subtitle parameters.
-String vidsparkUrl(VidsrcRef ref) => 'https://vidspark.to/${_path(ref)}';
+String vidsparkUrl(VidsrcRef ref, {int? startAt}) => _withParams('https://vidspark.to/${_path(ref)}', {if (startAt != null) 'startAt': '$startAt'});
 
 /// Players that run inside an iframe sandbox — pop-ups and redirects can't
 /// escape it, so they're ad-free.

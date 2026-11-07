@@ -11,13 +11,27 @@ import 'pressable.dart';
 import 'rating_ring.dart';
 
 class WorkCardItem {
-  const WorkCardItem({required this.title, required this.posterURL, required this.tmdbRating, required this.type, required this.detailsId});
+  const WorkCardItem({
+    required this.title,
+    required this.posterURL,
+    required this.tmdbRating,
+    required this.type,
+    required this.detailsId,
+    this.progressPercent,
+    this.progressLabel,
+  });
 
   final String title;
   final String? posterURL;
   final String tmdbRating;
   final RecordType type;
   final String detailsId;
+
+  /// 0-100 for the "continue watching" bar on the poster.
+  final double? progressPercent;
+
+  /// The episode that bar is about, e.g. "С2 Е5".
+  final String? progressLabel;
 }
 
 /// A heading and a sideways row of glowing poster cards with a rating ring,
@@ -103,6 +117,21 @@ class WorkCarousel extends ConsumerWidget {
                                       bottom: 8,
                                       child: RatingRing(value: rating, size: RatingRingSize.xs),
                                     ),
+                                  if (item.progressPercent != null)
+                                    Positioned(
+                                      left: 0,
+                                      right: 0,
+                                      bottom: 0,
+                                      height: 4,
+                                      child: ColoredBox(
+                                        color: Colors.white.withValues(alpha: 0.25),
+                                        child: FractionallySizedBox(
+                                          alignment: Alignment.centerLeft,
+                                          widthFactor: item.progressPercent! / 100,
+                                          child: const ColoredBox(color: AppColors.sky),
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
@@ -115,7 +144,10 @@ class WorkCarousel extends ConsumerWidget {
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                           ),
                           Text(
-                            item.type == RecordType.series ? t('watchlist.series') : t('watchlist.movie'),
+                            [
+                              item.type == RecordType.series ? t('watchlist.series') : t('watchlist.movie'),
+                              ?item.progressLabel,
+                            ].join(' · '),
                             style: TextStyle(fontSize: 14, color: AppColors.fg(0.7)),
                           ),
                         ],

@@ -312,9 +312,9 @@ class _AppShellState extends ConsumerState<AppShell> {
             ),
 
             if (ref.watch(authProvider.select((auth) => auth.isSignedIn))) ...[
-              // Mirrors each other in the bottom corners, above the tab bar.
-              Positioned(left: 12, bottom: AuroraTabBar.reservedHeight(context) - 4, child: const WatchingFriendsPill()),
-              Positioned(right: 16, bottom: AuroraTabBar.reservedHeight(context) - 4, child: const WatchingToasts()),
+              // Bottom-right above the tab bar, the toasts stacking over the pill.
+              Positioned(right: 12, bottom: AuroraTabBar.reservedHeight(context) - 4, child: const WatchingFriendsPill()),
+              Positioned(right: 12, bottom: AuroraTabBar.reservedHeight(context) + 48, child: const WatchingToasts()),
             ],
 
             Positioned(

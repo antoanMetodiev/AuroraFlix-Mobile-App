@@ -5,6 +5,8 @@ import 'dart:ui_web' as ui_web;
 import 'package:flutter/widgets.dart';
 import 'package:web/web.dart' as web;
 
+import 'embed_frame_handle.dart';
+
 int _nextViewId = 0;
 
 /// Native builds push a route for a fullscreen video; the browser's own
@@ -13,13 +15,17 @@ bool get isEmbedFullscreen => false;
 
 /// Browser build: a plain <iframe>, exactly as the website renders it.
 class EmbedFrame extends StatefulWidget {
-  const EmbedFrame({super.key, required this.url, this.sandbox, this.uiScale = 1, this.onLoaded, this.onMessage});
+  const EmbedFrame({super.key, required this.url, this.sandbox, this.uiScale = 1, this.noReferrer = false, this.handle, this.onLoaded, this.onMessage});
 
   final String url;
 
   /// The iframe's `sandbox` attribute (ad-free players), or null for none.
   final String? sandbox;
   final double uiScale;
+
+  /// Sent with no Referer (DoodStream refuses ours).
+  final bool noReferrer;
+  final EmbedFrameHandle? handle;
   final VoidCallback? onLoaded;
 
   /// `postMessage` events from the embedded page: (origin, data).
@@ -39,6 +45,8 @@ class _EmbedFrameState extends State<EmbedFrame> {
   /// the iframe and coming back loads the embed afresh.
   bool _onScreen = true;
 
+  void _post(Map<String, Object> message) => _iframe?.contentWindow?.postMessage(message.jsify(), '*'.toJS);
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -51,6 +59,7 @@ class _EmbedFrameState extends State<EmbedFrame> {
   @override
   void initState() {
     super.initState();
+    widget.handle?.attach(_post);
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
       final iframe = web.HTMLIFrameElement()
         ..src = widget.url
@@ -60,6 +69,7 @@ class _EmbedFrameState extends State<EmbedFrame> {
         ..allowFullscreen = true
         ..setAttribute('scrolling', 'no');
       if (widget.sandbox != null) iframe.setAttribute('sandbox', widget.sandbox!);
+      if (widget.noReferrer) iframe.referrerPolicy = 'no-referrer';
       _iframe = iframe;
 
       final percent = '${100 / widget.uiScale}%';
@@ -92,6 +102,7 @@ class _EmbedFrameState extends State<EmbedFrame> {
 
   @override
   void dispose() {
+    widget.handle?.detach(_post);
     _messages?.cancel();
     _iframe?.src = 'about:blank';
     super.dispose();

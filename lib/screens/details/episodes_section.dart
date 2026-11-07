@@ -9,6 +9,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/api/catalog_api.dart';
 import '../../core/dates.dart';
 import '../../core/i18n/locale.dart';
+import '../../core/library/watch_progress.dart';
 import '../../core/theme.dart';
 import '../../core/tmdb.dart';
 import '../../models/models.dart';
@@ -33,9 +34,12 @@ const _cooldownKey = 'lastCheckForNewEpisodesGlobal';
 /// new episode?" callout with its one-minute-cooldown check, and a card per
 /// episode that plays it.
 class EpisodesSection extends ConsumerStatefulWidget {
-  const EpisodesSection({super.key, required this.series, required this.onSelect});
+  const EpisodesSection({super.key, required this.series, required this.onSelect, this.initialSeason});
 
   final CinemaRecord series;
+
+  /// Opens on this season: the one the viewer got to.
+  final String? initialSeason;
   final ValueChanged<Episode> onSelect;
 
   @override
@@ -48,7 +52,7 @@ class _EpisodesSectionState extends ConsumerState<EpisodesSection> {
     for (final episode in _ordered)
       if (episode.season != null) episode.season!,
   }.toList()..sort((a, b) => (int.tryParse(a) ?? 0).compareTo(int.tryParse(b) ?? 0));
-  late String _season = _seasons.firstOrNull ?? '1';
+  late String _season = _seasons.contains(widget.initialSeason) ? widget.initialSeason! : (_seasons.firstOrNull ?? '1');
 
   Duration _remaining = Duration.zero;
   bool _checking = false;
@@ -96,6 +100,8 @@ class _EpisodesSectionState extends ConsumerState<EpisodesSection> {
     if (_ordered.isEmpty) return const SizedBox.shrink();
 
     final seasonEpisodes = _ordered.where((episode) => episode.season == _season).toList();
+    final progress = ref.watch(watchProgressProvider);
+    final seriesTmdbId = widget.series.tmdbId;
     final minutes = _remaining.inMinutes;
     final seconds = (_remaining.inSeconds % 60).toString().padLeft(2, '0');
 
@@ -217,7 +223,14 @@ class _EpisodesSectionState extends ConsumerState<EpisodesSection> {
               for (final episode in seasonEpisodes)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 20),
-                  child: _EpisodeCard(episode: episode, minutesLabel: t('common.minutes'), onTap: () => widget.onSelect(episode)),
+                  child: _EpisodeCard(
+                    episode: episode,
+                    progress: seriesTmdbId == null || episode.season == null || episode.episodeNumber == null
+                        ? null
+                        : progress[ProgressTarget.episode(seriesTmdbId, episode.season!, episode.episodeNumber!).key],
+                    minutesLabel: t('common.minutes'),
+                    onTap: () => widget.onSelect(episode),
+                  ),
                 ),
             ],
           ),
@@ -228,9 +241,10 @@ class _EpisodesSectionState extends ConsumerState<EpisodesSection> {
 }
 
 class _EpisodeCard extends ConsumerWidget {
-  const _EpisodeCard({required this.episode, required this.minutesLabel, required this.onTap});
+  const _EpisodeCard({required this.episode, required this.progress, required this.minutesLabel, required this.onTap});
 
   final Episode episode;
+  final WatchProgress? progress;
   final String minutesLabel;
   final VoidCallback onTap;
 
@@ -240,6 +254,8 @@ class _EpisodeCard extends ConsumerWidget {
         ? '${episode.description!.substring(0, 219)}..'
         : episode.description;
     final rating = double.tryParse(episode.tmdbRating ?? '');
+    final finished = progress?.finished ?? false;
+    final percent = finished ? null : progress?.percent;
 
     return Pressable(
       onTap: onTap,
@@ -272,6 +288,41 @@ class _EpisodeCard extends ConsumerWidget {
                       ),
                     ),
                   ),
+                  if (finished)
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(6)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(LucideIcons.check, size: 13, color: AppColors.emerald),
+                            const SizedBox(width: 4),
+                            Text(
+                              ref.watch(translatorProvider)('episodes.watched'),
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (percent != null)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: 4,
+                      child: ColoredBox(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        child: FractionallySizedBox(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: percent / 100,
+                          child: const ColoredBox(color: AppColors.sky),
+                        ),
+                      ),
+                    ),
                   if (rating != null)
                     Positioned(
                       top: 10,

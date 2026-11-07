@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/catalog_api.dart';
 import '../../core/library/last_viewed.dart';
+import '../../core/library/watch_progress.dart';
 import '../../core/slow_scroll.dart';
 import '../../core/theme.dart';
 import '../../core/tmdb.dart';
@@ -28,10 +29,13 @@ final _detailsProvider = FutureProvider.family<CinemaRecord?, _DetailsKey>((ref,
 /// trailer, cast, images, the player (and episodes for a series), comments,
 /// footer. Opening it records it in "Last Viewed".
 class DetailsScreen extends ConsumerStatefulWidget {
-  const DetailsScreen({super.key, required this.type, required this.id});
+  const DetailsScreen({super.key, required this.type, required this.id, this.glideToPlayer = false});
 
   final RecordType type;
   final String id;
+
+  /// Opened from "Continue watching": go straight on to the player.
+  final bool glideToPlayer;
 
   @override
   ConsumerState<DetailsScreen> createState() => _DetailsScreenState();
@@ -47,6 +51,28 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> with SingleTicker
   /// For a series: the episode playing (the series record itself has no
   /// playable URL — the first episode is the default).
   String? _episodeUrl;
+
+  /// The season of the episode it opened on, when the viewer has been here.
+  String? _resumeSeason;
+  bool _resumeChecked = false;
+
+  /// Opens a series on the episode the viewer was on, or on the next one once
+  /// it's finished.
+  void _resumeEpisode(CinemaRecord record) {
+    if (_resumeChecked) return;
+    _resumeChecked = true;
+    if (!record.isSeries) return;
+    final latest = latestProgress(ref.read(watchProgressProvider), isSeries: true, tmdbId: record.tmdbId);
+    if (latest == null) return;
+    final ordered = orderEpisodes(record.allEpisodes);
+    final index = ordered.indexWhere(
+      (episode) => int.tryParse(episode.season ?? '') == int.tryParse(latest.season ?? '') && int.tryParse(episode.episodeNumber ?? '') == int.tryParse(latest.episode ?? ''),
+    );
+    if (index < 0) return;
+    final episode = latest.progress.finished && index + 1 < ordered.length ? ordered[index + 1] : ordered[index];
+    _episodeUrl = episode.videoURL;
+    _resumeSeason = episode.season;
+  }
 
   @override
   void dispose() {
@@ -107,7 +133,13 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> with SingleTicker
           if (!_tracked) {
             _tracked = true;
             Future.microtask(() => ref.read(lastViewedProvider.notifier).record(record));
+            if (widget.glideToPlayer) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _glideToPlayer();
+              });
+            }
           }
+          _resumeEpisode(record);
 
           final poster = tmdbImage(record.backgroundImgURL ?? record.posterImgURL, TmdbSize.w1280);
           final videoUrl = record.isSeries
@@ -136,7 +168,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> with SingleTicker
                     RevealOnScroll(child: ImageGallery(images: record.imagesList)),
                     if (videoUrl != null && (videoUrl.isNotEmpty || record.isSeries))
                       PlayerSection(key: _playerKey, videoUrl: videoUrl, title: record.title, poster: poster),
-                    if (record.isSeries) EpisodesSection(key: _episodesKey, series: record, onSelect: _playEpisode),
+                    if (record.isSeries) EpisodesSection(key: _episodesKey, series: record, initialSeason: _resumeSeason, onSelect: _playEpisode),
                     SimilarTitlesSection(record: record),
                     RevealOnScroll(
                       child: CommentsSection(recordId: record.id, type: record.type),

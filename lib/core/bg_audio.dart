@@ -17,20 +17,44 @@ import 'config.dart';
 /// [bgPlayerUrl]. The browser build can't do this (the embed page sends no
 /// CORS headers) and never gets the player.
 ///
+/// The second source, filmi2kEmbedUrl, is a plain embed page (website: БГ
+/// аудио 2) and needs none of that.
+///
 /// Null when the movie has no dub or anything along the way fails — the
 /// embed players are still there.
-final bgAudioMasterProvider = FutureProvider.family<String?, String>((ref, tmdbId) async {
-  if (kIsWeb || tmdbId.isEmpty) return null;
+final bgAudioSourceProvider = FutureProvider.family<BgAudioSource?, String>((ref, tmdbId) async {
+  if (tmdbId.isEmpty) return null;
   try {
     final source = await http.get(Uri.parse('$siteUrl/api/bg-audio-source/${Uri.encodeComponent(tmdbId)}')).timeout(const Duration(seconds: 20));
     if (source.statusCode != 200) return null;
-    final embedUrl = (jsonDecode(source.body) as Map<String, dynamic>)['embedUrl'];
-    if (embedUrl is! String || embedUrl.isEmpty) return null;
-    return await resolveVidhideMaster(embedUrl);
+    final json = jsonDecode(source.body) as Map<String, dynamic>;
+    final embedUrl = json['embedUrl'];
+    final filmi2k = json['filmi2kEmbedUrl'];
+
+    String? master;
+    if (!kIsWeb && embedUrl is String && embedUrl.isNotEmpty) {
+      try {
+        master = await resolveVidhideMaster(embedUrl);
+      } catch (_) {
+        // The other source may still be there.
+      }
+    }
+    final embed = filmi2k is String && filmi2k.isNotEmpty ? filmi2k : null;
+    return master == null && embed == null ? null : BgAudioSource(master: master, filmi2kEmbedUrl: embed);
   } catch (_) {
     return null;
   }
 });
+
+class BgAudioSource {
+  const BgAudioSource({this.master, this.filmi2kEmbedUrl});
+
+  /// ZenoPlay's stream, for our own player page.
+  final String? master;
+
+  /// filmi2k's player, shown as it is.
+  final String? filmi2kEmbedUrl;
+}
 
 const _userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0';
 
@@ -58,8 +82,8 @@ Future<String?> resolveVidhideMaster(String embedUrl) async {
 
 /// Our player page on the site for that stream (my-app/public/bg-player.html);
 /// the links go in the fragment, so they never reach the server.
-String bgPlayerUrl(String master, {String? subtitleUrl, String? title}) {
-  final fragment = <String, String>{'master': master, 'sub': ?subtitleUrl, 'title': ?title};
+String bgPlayerUrl(String master, {String? subtitleUrl, String? title, int? startAt}) {
+  final fragment = <String, String>{'master': master, 'sub': ?subtitleUrl, 'title': ?title, if (startAt != null) 'start': '$startAt'};
   return '$siteUrl/bg-player.html#${Uri(queryParameters: fragment).query}';
 }
 

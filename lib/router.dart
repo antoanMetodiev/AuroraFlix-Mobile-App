@@ -25,6 +25,7 @@ List<RouteBase> _sharedRoutes() => [
       key: ValueKey(state.uri.path),
       type: state.pathParameters['type'] == 'series' ? RecordType.series : RecordType.movie,
       id: state.pathParameters['id'] ?? '',
+      glideToPlayer: state.uri.queryParameters['watch'] == '1',
     ),
   ),
   GoRoute(path: 'account/subscription', builder: (context, state) => const SubscriptionScreen()),

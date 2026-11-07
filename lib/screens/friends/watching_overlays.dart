@@ -188,7 +188,7 @@ class _PulsingDotState extends State<_PulsingDot> with SingleTickerProviderState
   );
 }
 
-/// Bottom-left pill over the tab bar with the avatars of friends watching
+/// Bottom-right pill over the tab bar with the avatars of friends watching
 /// right now; tap for their cards (website: WatchingFriendsMobilePill).
 class WatchingFriendsPill extends ConsumerStatefulWidget {
   const WatchingFriendsPill({super.key});
@@ -217,7 +217,7 @@ class _WatchingFriendsPillState extends ConsumerState<WatchingFriendsPill> {
       },
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           IgnorePointer(
             ignoring: !_open,
@@ -227,7 +227,7 @@ class _WatchingFriendsPillState extends ConsumerState<WatchingFriendsPill> {
               curve: Curves.easeOut,
               child: AnimatedScale(
                 scale: _open ? 1 : 0.95,
-                alignment: Alignment.bottomLeft,
+                alignment: Alignment.bottomRight,
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOut,
                 child: Container(

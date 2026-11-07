@@ -15,9 +15,10 @@ String _currentBranchPrefix(BuildContext context) {
 }
 
 /// Opens a title's details screen by its TMDB id.
-void openTitle(BuildContext context, RecordType type, String id) {
+/// With [watch], it glides on down to the player.
+void openTitle(BuildContext context, RecordType type, String id, {bool watch = false}) {
   if (id.isEmpty) return;
-  context.push('${_currentBranchPrefix(context)}/title/${type.name}/${Uri.encodeComponent(id)}');
+  context.push('${_currentBranchPrefix(context)}/title/${type.name}/${Uri.encodeComponent(id)}${watch ? '?watch=1' : ''}');
 }
 
 void openRecord(BuildContext context, CinemaRecord record) => openTitle(context, record.type, detailsIdFor(record));

@@ -13,6 +13,7 @@ import '../../core/config.dart';
 import '../../core/friends/friends_api.dart';
 import '../../core/friends/watching_presence.dart';
 import '../../core/i18n/locale.dart';
+import '../../core/library/watch_progress.dart';
 import '../../core/theme.dart';
 import '../../models/models.dart';
 import '../../widgets/embed_frame/embed_frame.dart';
@@ -21,6 +22,7 @@ import '../../widgets/loader.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/reveal.dart';
 import '../../widgets/video_width.dart';
+import 'player_telemetry.dart';
 import 'player_urls.dart';
 
 /// Our own Bulgarian subtitles for a movie or one episode, if the subtitles
@@ -41,6 +43,16 @@ final _subtitleUrlProvider = FutureProvider.family<String?, String>((ref, path) 
 /// Our own БГ аудио player (core/bg_audio.dart) — not an embed: listed
 /// first and selected when the movie has a Bulgarian dub, and ad-free.
 const _bgAudioPlayer = 7;
+
+/// The second dub source: filmi2k's embed as it is, after ours when both exist.
+const _bgAudioPlayer2 = 8;
+
+/// The players that can be told where to start: by their URL, EmbedMaster (5)
+/// by a message, ours (7) by its fragment.
+const _resumablePlayers = {2, 3, 4, 5, 6, 7};
+
+/// How often the time is counted for a player that reports nothing.
+const _estimateTick = Duration(seconds: 10);
 
 const _vidlinkStartTimeout = Duration(seconds: 15);
 const _vidlinkFallback = 1;
@@ -85,6 +97,69 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
 
   late final _presence = WatchingPresence(ref.read(friendsApiProvider));
 
+  late final WatchProgressController _progress;
+  final _frameHandle = EmbedFrameHandle();
+
+  /// Where this run starts. Read only while nothing plays: it goes into the
+  /// player's URL, so following the live position would keep reloading it.
+  int? _resumeSeconds;
+  WatchProgressRecorder? _recorder;
+  bool _embedmasterSought = false;
+
+  /// БГ аудио 2 reports nothing, so its position is counted from the viewer's
+  /// first touch in it. A pause can't be seen from here: it's only an estimate.
+  Timer? _estimateTimer;
+  bool _estimateEngaged = false;
+  double _estimatedPosition = 0;
+
+  late final _lifecycle = AppLifecycleListener(onHide: () => _recorder?.flush());
+
+  ProgressTarget? _progressTarget(VidsrcRef? vidsrcRef) => switch (vidsrcRef) {
+    MovieRef() => ProgressTarget.movie(vidsrcRef.tmdbId),
+    TvRef(:final season, :final episode) => ProgressTarget.episode(vidsrcRef.tmdbId, season, episode),
+    null => null,
+  };
+
+  /// A new run of the active player: recording starts over with it.
+  void _startRecording() {
+    _endRecording();
+    final target = _progressTarget(_ref);
+    if (target == null) return;
+    _embedmasterSought = false;
+    // Kept here: the last save can come just after this screen has gone.
+    final progress = _progress;
+    final title = widget.title;
+    final image = widget.poster;
+    _recorder = WatchProgressRecorder(
+      target: target,
+      provider: _active,
+      save: (target, seconds, duration) => progress.save(target, seconds, duration, title: title, image: image),
+    );
+    if (_active == _bgAudioPlayer2) {
+      _estimateEngaged = false;
+      _estimatedPosition = (_resumeSeconds ?? 0).toDouble();
+      _estimateTimer = Timer.periodic(_estimateTick, (_) {
+        if (!_estimateEngaged || WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) return;
+        _estimatedPosition += _estimateTick.inSeconds;
+        progress.save(target, _estimatedPosition, null, title: title, image: image, approximate: true);
+      });
+    }
+  }
+
+  void _endRecording() {
+    _recorder?.flush();
+    _recorder = null;
+    _estimateTimer?.cancel();
+    _estimateTimer = null;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _progress = ref.read(watchProgressProvider.notifier);
+    _lifecycle;
+  }
+
   VidsrcRef? get _ref => VidsrcRef.parse(widget.videoUrl);
 
   /// What friends see you watching — only once Play was pressed.
@@ -106,6 +181,7 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
   void didUpdateWidget(PlayerSection oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.videoUrl != widget.videoUrl) {
+      _endRecording();
       _bgAudioFailed = false;
       _hasStarted = false;
       _autoSwitchedFrom = null;
@@ -134,6 +210,12 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_hasStarted && !TickerMode.valuesOf(context).enabled && !isEmbedFullscreen) {
+      // Not in the middle of this build: the save rebuilds what shows it.
+      final recorder = _recorder;
+      _recorder = null;
+      _estimateTimer?.cancel();
+      _estimateTimer = null;
+      Future.microtask(() => recorder?.flush());
       _hasStarted = false;
       _frameLoading = true;
       _stopVidlinkWatchdog();
@@ -143,6 +225,10 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
   @override
   void dispose() {
     _stopVidlinkWatchdog();
+    _estimateTimer?.cancel();
+    _lifecycle.dispose();
+    final recorder = _recorder;
+    Future.microtask(() => recorder?.flush());
     _presence.dispose();
     setLeavePageGuard(false);
     super.dispose();
@@ -167,39 +253,61 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
       return;
     }
     if (!_hasStarted || _active != 1) _vidsrcUsesOurSubs = true;
-    if (!_hasStarted && !_userChangedPlayer && _active != _bgAudioPlayer) _active = 5;
+    if (!_hasStarted && !_userChangedPlayer && _active != _bgAudioPlayer && _active != _bgAudioPlayer2) _active = 5;
   }
 
   /// The movie's dub, once resolved: its player becomes the selected one,
   /// unless the viewer already started or picked another.
-  void _onBgAudioResolved(String? master) {
-    if (master != null && !_hasStarted && !_userChangedPlayer) _active = _bgAudioPlayer;
-    if (master == null && _active == _bgAudioPlayer) _active = 1;
+  void _onBgAudioResolved(String? master, String? filmi2k) {
+    final dub = master != null ? _bgAudioPlayer : (filmi2k != null ? _bgAudioPlayer2 : null);
+    if (dub != null && !_hasStarted && !_userChangedPlayer) _active = dub;
+    if ((master == null && _active == _bgAudioPlayer) || (filmi2k == null && _active == _bgAudioPlayer2)) _active = dub ?? 1;
   }
 
-  Map<ProviderId, String?> _urls(VidsrcRef? ref, String? subtitleUrl, String? bgAudioMaster) => {
-    _bgAudioPlayer: bgAudioMaster == null ? null : bgPlayerUrl(bgAudioMaster, subtitleUrl: subtitleUrl, title: widget.title),
-    1: widget.videoUrl.isEmpty ? null : vidsrcUrl(widget.videoUrl, subtitleUrl: _vidsrcUsesOurSubs ? subtitleUrl : null),
-    2: ref == null ? null : vidfastUrl(ref),
-    3: ref == null ? null : cinesrcUrl(ref),
-    4: ref == null || subtitleUrl == null ? null : vidlinkUrl(ref, subtitleUrl),
-    5: ref == null || subtitleUrl == null ? null : embedmasterUrl(ref, subtitleUrl),
-    6: ref == null ? null : vidsparkUrl(ref),
-  };
+  Map<ProviderId, String?> _urls(VidsrcRef? ref, String? subtitleUrl, String? bgAudioMaster, String? filmi2k) {
+    final startAt = _resumeSeconds == null || _resumeSeconds == 0 ? null : _resumeSeconds;
+    return {
+      _bgAudioPlayer: bgAudioMaster == null ? null : bgPlayerUrl(bgAudioMaster, subtitleUrl: subtitleUrl, title: widget.title, startAt: startAt),
+      _bgAudioPlayer2: filmi2k,
+      1: widget.videoUrl.isEmpty ? null : vidsrcUrl(widget.videoUrl, subtitleUrl: _vidsrcUsesOurSubs ? subtitleUrl : null),
+      2: ref == null ? null : vidfastUrl(ref, startAt: startAt),
+      3: ref == null ? null : cinesrcUrl(ref, startAt: startAt),
+      4: ref == null || subtitleUrl == null ? null : vidlinkUrl(ref, subtitleUrl, startAt: startAt),
+      5: ref == null || subtitleUrl == null ? null : embedmasterUrl(ref, subtitleUrl),
+      6: ref == null ? null : vidsparkUrl(ref, startAt: startAt),
+    };
+  }
+
+  void _readResume() {
+    final target = _progressTarget(_ref);
+    _resumeSeconds = target == null ? null : resumeSecondsFrom(ref.read(watchProgressProvider), target);
+  }
 
   void _select(ProviderId provider) => setState(() {
+    final wasPlaying = _hasStarted;
+    if (wasPlaying) _endRecording();
     _userChangedPlayer = true;
     _autoSwitchedFrom = null;
     _active = provider;
     _frameLoading = true;
     _stopVidlinkWatchdog();
+    _readResume();
+    if (wasPlaying) _startRecording();
     if (_hasStarted && provider == 4) _startVidlinkWatchdog();
   });
 
   void _start() => setState(() {
     _hasStarted = true;
+    _startRecording();
     if (_active == 4) _startVidlinkWatchdog();
   });
+
+  void _startOver() {
+    final target = _progressTarget(_ref);
+    if (target != null) _progress.clear(target);
+    _resumeSeconds = null;
+    _start();
+  }
 
   void _startVidlinkWatchdog() {
     _vidlinkPlaying = false;
@@ -229,8 +337,16 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
         _bgAudioFailed = true;
         _active = 1;
         _frameLoading = true;
+        _readResume();
+        _startRecording();
       });
       return;
+    }
+    if (_hasStarted) _recorder?.onMessage(origin, data);
+    final resume = _resumeSeconds;
+    if (_hasStarted && _active == 5 && resume != null && resume > 0 && !_embedmasterSought && isEmbedmasterReady(data)) {
+      _embedmasterSought = true;
+      _frameHandle.post(embedmasterSeekCommand(resume));
     }
     if (_active != 4 || _vidlinkPlaying || origin != vidlinkOrigin || data is! Map) return;
     final inner = data['data'];
@@ -264,17 +380,22 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
     }
 
     String? bgAudioMaster;
-    if (vidsrcRef is MovieRef && !_bgAudioFailed) {
-      bgAudioMaster = ref.watch(bgAudioMasterProvider(vidsrcRef.tmdbId)).value;
-      ref.listen(bgAudioMasterProvider(vidsrcRef.tmdbId), (previous, next) {
-        if (next.hasValue) setState(() => _onBgAudioResolved(next.value));
+    String? filmi2k;
+    if (vidsrcRef is MovieRef) {
+      final source = ref.watch(bgAudioSourceProvider(vidsrcRef.tmdbId)).value;
+      bgAudioMaster = _bgAudioFailed ? null : source?.master;
+      filmi2k = source?.filmi2kEmbedUrl;
+      ref.listen(bgAudioSourceProvider(vidsrcRef.tmdbId), (previous, next) {
+        if (next.hasValue) setState(() => _onBgAudioResolved(_bgAudioFailed ? null : next.value?.master, next.value?.filmi2kEmbedUrl));
       });
     }
 
+    if (!_hasStarted) _readResume();
+
     final hasOwn = subtitleUrl != null;
     final embeds = hasOwn ? const [5, 1, 4, 2, 3, 6] : const [1, 2, 3, 6];
-    final order = bgAudioMaster == null ? embeds : [_bgAudioPlayer, ...embeds];
-    final urls = _urls(vidsrcRef, subtitleUrl, bgAudioMaster);
+    final order = [if (bgAudioMaster != null) _bgAudioPlayer, if (filmi2k != null) _bgAudioPlayer2, ...embeds];
+    final urls = _urls(vidsrcRef, subtitleUrl, bgAudioMaster, filmi2k);
     final activeSrc = urls[_active] ?? urls[1];
     final sandboxed = sandboxedPlayers.contains(_active) && urls[_active] != null;
     // Ours plays no ads: no sandbox needed, and nothing to guard against.
@@ -299,7 +420,7 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
                   active: _active,
                   badge: (provider) => (
                     bgSubtitles: hasOwn && (const {3, 4, 5, 6, _bgAudioPlayer}.contains(provider) || (provider == 1 && _vidsrcUsesOurSubs)),
-                    bgAudio: provider == _bgAudioPlayer,
+                    bgAudio: provider == _bgAudioPlayer || provider == _bgAudioPlayer2,
                   ),
                   onSelect: _select,
                 ),
@@ -335,19 +456,31 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
                               child: Text(t('player.pickEpisode'), style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.4))),
                             )
                           : !_hasStarted
-                          ? _StartButton(poster: widget.poster, label: t('player.play'), onTap: _start)
+                          ? _StartButton(
+                              poster: widget.poster,
+                              label: t('player.play'),
+                              onTap: _start,
+                              resumeLabel: _resumeSeconds == null ? null : t('player.resumeFrom', {'time': formatPlaybackTime(_resumeSeconds!)}),
+                              startOverLabel: t('player.startOver'),
+                              onStartOver: _startOver,
+                            )
                           : Stack(
                               fit: StackFit.expand,
                               children: [
-                                EmbedFrame(
+                                Listener(
+                                  onPointerDown: (_) => _estimateEngaged = true,
+                                  child: EmbedFrame(
                                   key: ValueKey(activeSrc),
                                   url: activeSrc,
                                   sandbox: sandboxed ? playerSandbox : null,
                                   uiScale: _active == 2 ? vidfastUiScale : 1,
+                                  noReferrer: _active == _bgAudioPlayer2,
+                                  handle: _frameHandle,
                                   onLoaded: () {
                                     if (mounted) setState(() => _frameLoading = false);
                                   },
                                   onMessage: _onFrameMessage,
+                                  ),
                                 ),
                                 if (_frameLoading)
                                   const IgnorePointer(
@@ -355,6 +488,14 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
                                       color: Colors.black,
                                       child: Center(child: Spinner(size: 44)),
                                     ),
+                                  ),
+                                if (_resumeSeconds != null && _autoSwitchedFrom == null && !_resumablePlayers.contains(_active))
+                                  _TimedNotice(
+                                    key: ValueKey('resume:$activeSrc'),
+                                    icon: LucideIcons.clock,
+                                    iconColor: AppColors.sky,
+                                    duration: const Duration(seconds: 10),
+                                    title: t('player.resumeManual', {'time': formatPlaybackTime(_resumeSeconds!)}),
                                   ),
                                 if (_autoSwitchedFrom != null && _active == _vidlinkFallback)
                                   _TimedNotice(
@@ -763,14 +904,83 @@ class _UploadSubtitlesGuideState extends ConsumerState<_UploadSubtitlesGuide> {
 
 /// Poster, dimmed, with a big glass Play button — the player's idle state.
 class _StartButton extends StatelessWidget {
-  const _StartButton({required this.poster, required this.label, required this.onTap});
+  const _StartButton({
+    required this.poster,
+    required this.label,
+    required this.onTap,
+    required this.resumeLabel,
+    required this.startOverLabel,
+    required this.onStartOver,
+  });
 
   final String? poster;
   final String label;
   final VoidCallback onTap;
 
+  /// "Continue from 47:12", when there's a saved position.
+  final String? resumeLabel;
+  final String startOverLabel;
+  final VoidCallback onStartOver;
+
   @override
   Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        _playButton(),
+        if (resumeLabel != null)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Color(0xCC000000), Colors.transparent]),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 32, 12, 10),
+                child: Row(
+                  children: [
+                    const Icon(LucideIcons.clock, size: 18, color: AppColors.sky),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        resumeLabel!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Pressable(
+                      onTap: onStartOver,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(LucideIcons.rotateCcw, size: 14, color: Colors.white),
+                            const SizedBox(width: 6),
+                            Text(startOverLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _playButton() {
     return Semantics(
       button: true,
       label: label,

@@ -8,6 +8,8 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
+import 'embed_frame_handle.dart';
+
 /// The page the embed is hosted in. Using auroraflix.cloud as its address
 /// means the player sees the same Referer as on the website.
 const _hostUrl = 'https://auroraflix.cloud/';
@@ -17,7 +19,7 @@ String _escapeAttribute(String value) => const HtmlEscape(HtmlEscapeMode.attribu
 /// One <iframe> filling the page, scaled by [uiScale] (VidFast's controls are
 /// shown smaller, like on the site), forwarding its `postMessage`s and its
 /// load event to the app.
-String _hostPage({required String url, String? sandbox, required double uiScale}) {
+String _hostPage({required String url, String? sandbox, required double uiScale, required bool noReferrer}) {
   final size = '${100 / uiScale}%';
   return '''
 <!DOCTYPE html>
@@ -37,6 +39,7 @@ String _hostPage({required String url, String? sandbox, required double uiScale}
 <iframe src="${_escapeAttribute(url)}"
         allow="accelerometer *; autoplay *; clipboard-write *; encrypted-media *; gyroscope *; picture-in-picture *; fullscreen *"
         allowfullscreen scrolling="no"
+        ${noReferrer ? 'referrerpolicy="no-referrer"' : ''}
         ${sandbox == null ? '' : 'sandbox="${_escapeAttribute(sandbox)}"'}></iframe>
 <script>
   // Not an inline onload="…" attribute: the JSON's quotes would end the
@@ -59,13 +62,17 @@ String _hostPage({required String url, String? sandbox, required double uiScale}
 /// ads) — only the iframe itself moves. A video going fullscreen gets the
 /// whole screen in landscape.
 class EmbedFrame extends StatefulWidget {
-  const EmbedFrame({super.key, required this.url, this.sandbox, this.uiScale = 1, this.onLoaded, this.onMessage});
+  const EmbedFrame({super.key, required this.url, this.sandbox, this.uiScale = 1, this.noReferrer = false, this.handle, this.onLoaded, this.onMessage});
 
   final String url;
 
   /// The iframe's `sandbox` attribute (ad-free players), or null for none.
   final String? sandbox;
   final double uiScale;
+
+  /// Sent with no Referer (DoodStream refuses ours).
+  final bool noReferrer;
+  final EmbedFrameHandle? handle;
   final VoidCallback? onLoaded;
 
   /// `postMessage` events from the embedded page: (origin, data).
@@ -95,6 +102,17 @@ class _EmbedFrameState extends State<EmbedFrame> {
   bool _onScreen = true;
 
   @override
+  void initState() {
+    super.initState();
+    widget.handle?.attach(_post);
+  }
+
+  void _post(Map<String, Object> message) {
+    final json = jsonEncode(message);
+    _controller.runJavaScript("document.querySelector('iframe').contentWindow.postMessage($json, '*');");
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final onScreen = TickerMode.valuesOf(context).enabled;
@@ -108,7 +126,7 @@ class _EmbedFrameState extends State<EmbedFrame> {
   }
 
   void _loadHostPage(WebViewController controller) => controller.loadHtmlString(
-    _hostPage(url: widget.url, sandbox: widget.sandbox, uiScale: widget.uiScale),
+    _hostPage(url: widget.url, sandbox: widget.sandbox, uiScale: widget.uiScale, noReferrer: widget.noReferrer),
     baseUrl: _hostUrl,
   );
 
@@ -205,6 +223,7 @@ class _EmbedFrameState extends State<EmbedFrame> {
 
   @override
   void dispose() {
+    widget.handle?.detach(_post);
     if (_fullscreen) {
       _fullscreenEmbeds--;
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

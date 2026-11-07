@@ -186,6 +186,11 @@ class _RankedList extends StatefulWidget {
 class _RankedListState extends State<_RankedList> {
   bool _atEnd = false;
 
+  // The slim scroll indicator on the right: thumb size (share of the list
+  // that's visible) and position (how far down it's scrolled), both 0-1. Null
+  // when the list fits and there's nothing to indicate.
+  ({double size, double offset})? _thumb;
+
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
@@ -200,17 +205,52 @@ class _RankedListState extends State<_RankedList> {
             _updateAtEnd(notification.metrics);
             return false;
           },
-          child: EdgeFade(
-            axis: Axis.vertical,
-            fadeStart: false,
-            fadeEnd: !_atEnd,
-            end: 0.78,
-            child: ListView.builder(
-              padding: EdgeInsets.zero,
-              shrinkWrap: true,
-              itemCount: widget.items.length,
-              itemBuilder: (context, index) => _RankedRow(item: widget.items[index]),
-            ),
+          child: Stack(
+            children: [
+              EdgeFade(
+                axis: Axis.vertical,
+                fadeStart: false,
+                fadeEnd: !_atEnd,
+                end: 0.78,
+                child: ListView.builder(
+                  padding: EdgeInsets.only(right: _thumb == null ? 0 : 12),
+                  shrinkWrap: true,
+                  itemCount: widget.items.length,
+                  itemBuilder: (context, index) => _RankedRow(item: widget.items[index]),
+                ),
+              ),
+              if (_thumb case final thumb?)
+                Positioned(
+                  top: 8,
+                  right: 0,
+                  bottom: 8,
+                  width: 3,
+                  child: IgnorePointer(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) => DecoratedBox(
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(999)),
+                        child: Stack(
+                          children: [
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              top: thumb.offset * (1 - thumb.size) * constraints.maxHeight,
+                              height: thumb.size * constraints.maxHeight,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF7DD3FC), Color(0xFF0EA5E9)]),
+                                  borderRadius: BorderRadius.circular(999),
+                                  boxShadow: [BoxShadow(color: const Color(0xFF38BDF8).withValues(alpha: 0.6), blurRadius: 8)],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -219,7 +259,16 @@ class _RankedListState extends State<_RankedList> {
 
   void _updateAtEnd(ScrollMetrics metrics) {
     final atEnd = metrics.pixels >= metrics.maxScrollExtent - 4;
-    if (atEnd != _atEnd) setState(() => _atEnd = atEnd);
+    final overflow = metrics.maxScrollExtent;
+    final thumb = overflow > 4
+        ? (size: metrics.viewportDimension / (overflow + metrics.viewportDimension), offset: (metrics.pixels / overflow).clamp(0.0, 1.0))
+        : null;
+    if (atEnd != _atEnd || thumb != _thumb) {
+      setState(() {
+        _atEnd = atEnd;
+        _thumb = thumb;
+      });
+    }
   }
 }
 

@@ -8,6 +8,7 @@ import '../../core/theme.dart';
 import '../../shell/app_shell.dart';
 import '../../widgets/footer.dart';
 import '../../widgets/reveal.dart';
+import 'continue_watching_section.dart';
 import 'cult_section.dart';
 import 'hero_section.dart';
 import 'home_data.dart';
@@ -17,7 +18,7 @@ import 'last_viewed_section.dart';
 import 'trending_showcase.dart';
 
 /// The home screen — the website's app/page.tsx, section for section and in
-/// the same order: hero, pricing, last viewed, trending showcase, cult rows,
+/// the same order: hero, pricing, continue watching, last viewed, trending showcase, cult rows,
 /// footer.
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -81,6 +82,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             // PAYMENTS DISABLED — nobody is charged for now (same on the website).
             // PricingSection(key: _pricingKey),
+            const RevealOnScroll(child: ContinueWatchingSection()),
             const RevealOnScroll(child: LastViewedSection()),
             if (trending != null) TrendingShowcase(movies: trending.movies, series: trending.series),
             const CultSection(),
