@@ -564,6 +564,7 @@ class _FriendWatchingCard extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.fg(0.9)),
                     ),
+                    WatchingPlayback(watching: watching),
                     const SizedBox(height: 4),
                     PreviewGenres(loaded: preview.hasValue || preview.hasError, genres: previewGenres(preview.value, 2)),
                   ],

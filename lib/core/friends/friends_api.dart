@@ -77,13 +77,39 @@ class FriendNotification {
 
 /// What someone is playing right now (website: WatchingTarget).
 class WatchingTarget {
-  const WatchingTarget({required this.tmdbId, required this.type, required this.title, this.season, this.episode});
+  const WatchingTarget({
+    required this.tmdbId,
+    required this.type,
+    required this.title,
+    this.season,
+    this.episode,
+    this.position,
+    this.duration,
+    this.paused,
+  });
 
   final String tmdbId;
   final RecordType type;
   final String title;
   final int? season;
   final int? episode;
+
+  /// Where in it, in seconds — only from players that report it.
+  final double? position;
+  final double? duration;
+  final bool? paused;
+
+  /// The same title, at this point of it (see [WatchingPresence]).
+  WatchingTarget withPlayback({int? season, int? episode, double? position, double? duration, bool? paused}) => WatchingTarget(
+    tmdbId: tmdbId,
+    type: type,
+    title: title,
+    season: season ?? this.season,
+    episode: episode ?? this.episode,
+    position: position,
+    duration: duration,
+    paused: paused,
+  );
 
   static WatchingTarget? fromJson(Object? json) {
     if (json is! Map<String, dynamic>) return null;
@@ -93,6 +119,9 @@ class WatchingTarget {
       title: '${json['title'] ?? ''}',
       season: (json['season'] as num?)?.toInt(),
       episode: (json['episode'] as num?)?.toInt(),
+      position: (json['position'] as num?)?.toDouble(),
+      duration: (json['duration'] as num?)?.toDouble(),
+      paused: json['paused'] is bool ? json['paused'] as bool : null,
     );
   }
 
@@ -102,6 +131,9 @@ class WatchingTarget {
     'title': title,
     'season': ?season,
     'episode': ?episode,
+    'position': ?position,
+    'duration': ?duration,
+    'paused': ?paused,
   };
 
   @override
@@ -111,10 +143,13 @@ class WatchingTarget {
       other.type == type &&
       other.title == title &&
       other.season == season &&
-      other.episode == episode;
+      other.episode == episode &&
+      other.position == position &&
+      other.duration == duration &&
+      other.paused == paused;
 
   @override
-  int get hashCode => Object.hash(tmdbId, type, title, season, episode);
+  int get hashCode => Object.hash(tmdbId, type, title, season, episode, position, duration, paused);
 }
 
 class FriendsApi {

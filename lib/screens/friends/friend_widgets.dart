@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -264,6 +265,82 @@ class WatchingLabel extends ConsumerWidget {
       ),
     ],
   );
+}
+
+/// Where a friend is in what they're watching: "S2 E5 · Minute 47 of 132 ·
+/// Paused" and a thin bar (website: WatchingPlayback), as far as their player
+/// reports it. Nothing when nothing of it is known.
+class WatchingPlayback extends ConsumerWidget {
+  const WatchingPlayback({super.key, required this.watching});
+
+  final WatchingTarget watching;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(translatorProvider);
+    final WatchingTarget(:season, :episode, :position, :duration) = watching;
+    final paused = watching.paused == true;
+
+    final parts = <String>[
+      if (season != null && episode != null) t('friends.episodeShort', {'season': season, 'episode': episode}),
+      if (position != null)
+        [
+          t('friends.atMinute', {'minute': math.max(1, position ~/ 60)}),
+          if (duration != null && duration > 0) t('friends.ofMinutes', {'total': (duration / 60).round()}),
+        ].join(' '),
+    ];
+    if (parts.isEmpty && !paused) return const SizedBox.shrink();
+    final progress = position != null && duration != null && duration > 0 ? (position / duration).clamp(0.0, 1.0) : null;
+    final color = paused ? AppColors.amber : AppColors.emerald;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (parts.isNotEmpty) Text(parts.join(' · '), style: TextStyle(fontSize: 11, color: AppColors.fg(0.6))),
+              if (paused)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Two bars, not an icon: the release's icon font may not have one.
+                    for (var i = 0; i < 2; i++) ...[
+                      if (i > 0) const SizedBox(width: 1.5),
+                      Container(width: 2, height: 8, color: AppColors.amber),
+                    ],
+                    const SizedBox(width: 3),
+                    Text(
+                      t('friends.paused'),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.amber),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          if (progress != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: SizedBox(
+                  height: 2,
+                  child: Stack(
+                    children: [
+                      Container(color: AppColors.fg(0.1)),
+                      FractionallySizedBox(widthFactor: progress, child: Container(color: color)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Poster thumbnail for a "watching" row — the type icon until there's one.

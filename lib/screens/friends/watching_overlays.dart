@@ -70,6 +70,7 @@ class WatchingFriendCard extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.fg(0.9)),
                   ),
+                  WatchingPlayback(watching: watching),
                   const SizedBox(height: 4),
                   Wrap(
                     spacing: 6,

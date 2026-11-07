@@ -342,7 +342,19 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
       });
       return;
     }
-    if (_hasStarted) _recorder?.onMessage(origin, data);
+    if (_hasStarted) {
+      _recorder?.onMessage(origin, data);
+      final playback = extractProgress(_active, origin, data);
+      if (playback != null) {
+        _presence.onPlayback(
+          currentTime: playback.currentTime,
+          duration: playback.duration,
+          playing: playback.playing,
+          season: playback.season,
+          episode: playback.episode,
+        );
+      }
+    }
     final resume = _resumeSeconds;
     if (_hasStarted && _active == 5 && resume != null && resume > 0 && !_embedmasterSought && isEmbedmasterReady(data)) {
       _embedmasterSought = true;

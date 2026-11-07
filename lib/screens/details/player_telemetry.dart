@@ -16,10 +16,13 @@ const _origins = {
 const _embedmasterSource = 'embedmaster_player';
 
 class ProgressUpdate {
-  const ProgressUpdate({this.currentTime, this.duration, this.season, this.episode});
+  const ProgressUpdate({this.currentTime, this.duration, this.playing, this.season, this.episode});
 
   final double? currentTime;
   final double? duration;
+
+  /// Said outright by some players; the others only stop moving their time.
+  final bool? playing;
   final String? season;
   final String? episode;
 }
@@ -62,12 +65,18 @@ ProgressUpdate? extractProgress(int provider, String origin, Object? data) {
   switch (provider) {
     case 1:
       if (data['type'] != 'PLAYER_EVENT' || inner is! Map) return null;
-      return ProgressUpdate(currentTime: _number(inner['player_progress']), duration: _number(inner['player_duration']));
+      final status = inner['player_status'];
+      return ProgressUpdate(
+        currentTime: _number(inner['player_progress']),
+        duration: _number(inner['player_duration']),
+        playing: status is String ? status == 'playing' : null,
+      );
     case 2 || 4:
       if (data['type'] != 'PLAYER_EVENT' || inner is! Map) return null;
       return ProgressUpdate(
         currentTime: _number(inner['currentTime']),
         duration: _number(inner['duration']),
+        playing: inner['playing'] is bool ? inner['playing'] as bool : null,
         season: bothIds ? season : null,
         episode: bothIds ? episode : null,
       );
@@ -78,6 +87,11 @@ ProgressUpdate? extractProgress(int provider, String origin, Object? data) {
         // A next-episode message's time, if any, belongs to the episode it left.
         currentTime: type == 'cinesrc:nextepisode' ? null : _number(data['currentTime']),
         duration: type == 'cinesrc:nextepisode' ? null : _number(data['duration']),
+        playing: switch (type) {
+          'cinesrc:play' => true,
+          'cinesrc:pause' => false,
+          _ => null,
+        },
         season: bothIds ? season : null,
         episode: bothIds ? episode : null,
       );
