@@ -59,7 +59,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> with SingleTicker
   /// Opens a series on the episode the viewer was on, or on the next one once
   /// it's finished.
   void _resumeEpisode(CinemaRecord record) {
-    if (_resumeChecked) return;
+    // Signed in, the positions are the account's, once they've loaded.
+    if (_resumeChecked || !ref.read(watchProgressReadyProvider)) return;
     _resumeChecked = true;
     if (!record.isSeries) return;
     final latest = latestProgress(ref.read(watchProgressProvider), isSeries: true, tmdbId: record.tmdbId);
@@ -119,6 +120,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> with SingleTicker
   @override
   Widget build(BuildContext context) {
     final details = ref.watch(_detailsProvider((type: widget.type, id: widget.id)));
+    ref.watch(watchProgressReadyProvider);
 
     return ColoredBox(
       color: AppColors.background,

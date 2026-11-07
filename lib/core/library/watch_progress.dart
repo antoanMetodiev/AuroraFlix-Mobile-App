@@ -1,7 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
+
+import 'package:flutter/widgets.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../api/api_client.dart';
+import '../auth/auth_controller.dart';
 import '../i18n/locale.dart';
 
 /// Where the viewer stopped in each movie / episode, kept on this device
@@ -22,15 +27,7 @@ class ProgressTarget {
 }
 
 class WatchProgress {
-  const WatchProgress({
-    required this.seconds,
-    required this.duration,
-    required this.finished,
-    required this.updatedAt,
-    this.title,
-    this.image,
-    this.approximate = false,
-  });
+  const WatchProgress({required this.seconds, required this.duration, required this.finished, required this.updatedAt, this.title, this.image, this.approximate = false});
 
   final double seconds;
   final double? duration;
@@ -54,15 +51,7 @@ class WatchProgress {
     approximate: json['approximate'] == true,
   );
 
-  Map<String, dynamic> toJson() => {
-    'seconds': seconds,
-    'duration': duration,
-    'finished': finished,
-    'updatedAt': updatedAt,
-    'title': ?title,
-    'image': ?image,
-    if (approximate) 'approximate': true,
-  };
+  Map<String, dynamic> toJson() => {'seconds': seconds, 'duration': duration, 'finished': finished, 'updatedAt': updatedAt, 'title': ?title, 'image': ?image, if (approximate) 'approximate': true};
 
   /// 0-100 for a progress bar, or null when the runtime isn't known.
   double? get percent {
@@ -115,13 +104,7 @@ TitleProgress? latestProgress(Map<String, WatchProgress> map, {required bool isS
     if (key != prefix && !key.startsWith('$prefix:')) return;
     if (latest != null && latest!.progress.updatedAt >= entry.updatedAt) return;
     final parts = key.split(':');
-    latest = TitleProgress(
-      isSeries: isSeries,
-      tmdbId: tmdbId,
-      progress: entry,
-      season: parts.length > 3 ? parts[2] : null,
-      episode: parts.length > 3 ? parts[3] : null,
-    );
+    latest = TitleProgress(isSeries: isSeries, tmdbId: tmdbId, progress: entry, season: parts.length > 3 ? parts[2] : null, episode: parts.length > 3 ? parts[3] : null);
   });
   return latest;
 }
@@ -137,16 +120,9 @@ List<TitleProgress> continueWatching(Map<String, WatchProgress> map) {
     final titleKey = '${parts[0]}:${parts[1]}';
     final current = latest[titleKey];
     if (current != null && current.progress.updatedAt >= entry.updatedAt) return;
-    latest[titleKey] = TitleProgress(
-      isSeries: parts[0] == 'tv',
-      tmdbId: parts[1],
-      progress: entry,
-      season: parts.length > 3 ? parts[2] : null,
-      episode: parts.length > 3 ? parts[3] : null,
-    );
+    latest[titleKey] = TitleProgress(isSeries: parts[0] == 'tv', tmdbId: parts[1], progress: entry, season: parts.length > 3 ? parts[2] : null, episode: parts.length > 3 ? parts[3] : null);
   });
-  return latest.values.where((entry) => !entry.progress.finished).toList()
-    ..sort((a, b) => b.progress.updatedAt.compareTo(a.progress.updatedAt));
+  return latest.values.where((entry) => !entry.progress.finished).toList()..sort((a, b) => b.progress.updatedAt.compareTo(a.progress.updatedAt));
 }
 
 String formatPlaybackTime(num totalSeconds) {
@@ -157,9 +133,83 @@ String formatPlaybackTime(num totalSeconds) {
   return hours > 0 ? '$hours:${minutes.toString().padLeft(2, '0')}:$seconds' : '$minutes:$seconds';
 }
 
+/// Whose positions: `known` false until sign-in is known, then the signed-in
+/// user's id, or null for this device's.
+typedef ProgressAccount = ({bool known, String? userId});
+
+final progressAccountProvider = Provider<ProgressAccount>((ref) {
+  final auth = ref.watch(authProvider);
+  return (known: auth.isLoaded, userId: auth.isSignedIn ? auth.user?.id : null);
+});
+
+/// Coming back to the app refreshes the account's positions, at most this often.
+const _reloadAfter = Duration(seconds: 30);
+
+/// Where the viewer stopped (website: lib/watch-progress.ts). Signed out it's
+/// kept on the device; signed in it belongs to the account (lumo-user-svc's
+/// /watch-progress) and follows it to every device. The two never mix:
+/// signing in neither copies the device's positions to the account nor
+/// touches them, and signing out shows them again as they were.
 class WatchProgressController extends Notifier<Map<String, WatchProgress>> {
+  String? _userId;
+  bool _ready = false;
+
+  /// Saved while the account's positions were loading: they win over what loads.
+  Map<String, WatchProgress> _early = {};
+
+  /// Changes made before sign-in was known, replayed once it is.
+  final List<void Function()> _pending = [];
+  DateTime _lastLoad = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Whether the saved positions can be read yet: right away signed out, once
+  /// the account's have loaded signed in.
+  bool get ready => _ready;
+
   @override
   Map<String, WatchProgress> build() {
+    final account = ref.watch(progressAccountProvider);
+    _userId = account.userId;
+    _ready = false;
+    _early = {};
+    if (!account.known) return const {};
+
+    if (_pending.isNotEmpty) {
+      final replay = List.of(_pending);
+      _pending.clear();
+      Future.microtask(() {
+        for (final run in replay) {
+          run();
+        }
+      });
+    }
+
+    final userId = account.userId;
+    if (userId == null) {
+      _ready = true;
+      return _readLocal();
+    }
+    final lifecycle = AppLifecycleListener(
+      onResume: () {
+        if (_userId == userId && DateTime.now().difference(_lastLoad) > _reloadAfter) _load(userId);
+      },
+    );
+    ref.onDispose(lifecycle.dispose);
+    Future.microtask(() => _load(userId));
+    return const {};
+  }
+
+  bool get _signedIn => _userId != null;
+
+  /// Before sign-in is known, a change waits for it.
+  void _whenKnown(void Function() run) {
+    if (ref.read(progressAccountProvider).known) {
+      run();
+    } else {
+      _pending.add(run);
+    }
+  }
+
+  Map<String, WatchProgress> _readLocal() {
     final raw = ref.read(sharedPreferencesProvider).getString(_storageKey);
     if (raw == null) return const {};
     try {
@@ -173,40 +223,107 @@ class WatchProgressController extends Notifier<Map<String, WatchProgress>> {
     }
   }
 
-  void _write(Map<String, WatchProgress> next) {
-    final newest = next.entries.toList()..sort((a, b) => b.value.updatedAt.compareTo(a.value.updatedAt));
-    state = Map.fromEntries(newest.take(_maxEntries));
+  static Map<String, WatchProgress> _newest(Map<String, WatchProgress> map) {
+    final newest = map.entries.toList()..sort((a, b) => b.value.updatedAt.compareTo(a.value.updatedAt));
+    return Map.fromEntries(newest.take(_maxEntries));
+  }
+
+  /// Signed out: the whole map goes back on the device.
+  void _writeLocal(Map<String, WatchProgress> next) {
+    state = _newest(next);
     ref.read(sharedPreferencesProvider).setString(_storageKey, jsonEncode(state.map((key, value) => MapEntry(key, value.toJson()))));
+  }
+
+  Future<void> _load(String userId) async {
+    _lastLoad = DateTime.now();
+    final data = await ref.read(apiClientProvider).getJson('/watch-progress');
+    if (_userId != userId) return;
+    if (data == null) {
+      // Nothing to resume from, but this screen's own saves still go through.
+      if (_ready) return;
+      state = _early;
+    } else {
+      final loaded = <String, WatchProgress>{
+        for (final json in ApiClient.unwrapList(data))
+          if (json['key'] is String) json['key'] as String: WatchProgress.fromJson(json),
+      };
+      state = _newest({...loaded, ..._early});
+    }
+    _early = {};
+    _ready = true;
+  }
+
+  void _saveToAccount(String key, WatchProgress entry) {
+    if (!_ready) _early = {..._early, key: entry};
+    state = _newest({...state, key: entry});
+    unawaited(ref.read(apiClientProvider).send('PUT', '/watch-progress', body: {'key': key, ...entry.toJson()}));
+  }
+
+  void _removeFromAccount(List<String> keys) {
+    if (keys.isEmpty) return;
+    _early = {..._early}..removeWhere((key, _) => keys.contains(key));
+    state = {...state}..removeWhere((key, _) => keys.contains(key));
+    final api = ref.read(apiClientProvider);
+    // A long series' worth of keys, a URL at a time.
+    for (var i = 0; i < keys.length; i += 100) {
+      final query = keys.skip(i).take(100).map((key) => 'key=${Uri.encodeQueryComponent(key)}').join('&');
+      unawaited(api.send('DELETE', '/watch-progress?$query'));
+    }
   }
 
   void save(ProgressTarget target, double seconds, double? duration, {String? title, String? image, bool approximate = false}) {
     if (!seconds.isFinite || seconds < _minSavedSeconds) return;
     if (duration != null && duration < _minDurationSeconds) return;
 
-    // Some players say the runtime only once, as they load.
-    final knownDuration = duration ?? state[target.key]?.duration;
-    _write({
-      ...state,
-      target.key: WatchProgress(
+    final updatedAt = DateTime.now().millisecondsSinceEpoch;
+    _whenKnown(() {
+      // Some players say the runtime only once, as they load.
+      final knownDuration = duration ?? state[target.key]?.duration;
+      final entry = WatchProgress(
         seconds: seconds,
         duration: knownDuration,
         finished: knownDuration != null && seconds / knownDuration >= _finishedRatio,
-        updatedAt: DateTime.now().millisecondsSinceEpoch,
+        updatedAt: updatedAt,
         title: title,
         image: image,
         approximate: approximate,
-      ),
+      );
+      if (_signedIn) {
+        _saveToAccount(target.key, entry);
+      } else {
+        _writeLocal({...state, target.key: entry});
+      }
     });
   }
 
-  void clear(ProgressTarget target) => _write({...state}..remove(target.key));
+  void clear(ProgressTarget target) => _whenKnown(() {
+    if (_signedIn) {
+      _removeFromAccount([target.key]);
+    } else {
+      _writeLocal({...state}..remove(target.key));
+    }
+  });
 
   /// Takes a title out of "continue watching". Finished episodes stay, so a
   /// series keeps its "Watched" marks and still opens on the next one.
-  void dismiss({required bool isSeries, required String tmdbId}) {
+  void dismiss({required bool isSeries, required String tmdbId}) => _whenKnown(() {
     final prefix = '${isSeries ? 'tv' : 'movie'}:$tmdbId';
-    _write({...state}..removeWhere((key, entry) => !entry.finished && (key == prefix || key.startsWith('$prefix:'))));
-  }
+    final dismissed = [
+      for (final MapEntry(:key, :value) in state.entries)
+        if (!value.finished && (key == prefix || key.startsWith('$prefix:'))) key,
+    ];
+    if (_signedIn) {
+      _removeFromAccount(dismissed);
+    } else {
+      _writeLocal({...state}..removeWhere((key, _) => dismissed.contains(key)));
+    }
+  });
 }
 
 final watchProgressProvider = NotifierProvider<WatchProgressController, Map<String, WatchProgress>>(WatchProgressController.new);
+
+/// Whether [watchProgressProvider] can be read yet (see [WatchProgressController.ready]).
+final watchProgressReadyProvider = Provider<bool>((ref) {
+  ref.watch(watchProgressProvider);
+  return ref.read(watchProgressProvider.notifier).ready;
+});

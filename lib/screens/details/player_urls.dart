@@ -51,11 +51,13 @@ String _path(VidsrcRef ref) => switch (ref) {
 };
 
 /// 1 — vidsrc2.ru: our Bulgarian file via `sub_url` when we have one,
-/// otherwise its own Bulgarian track.
-String vidsrcUrl(String videoUrl, {String? subtitleUrl}) => _withParams(videoUrl.replaceAll('vidsrc.icu', 'vidsrc2.ru'), {
+/// otherwise its own Bulgarian track. `startAt` reaches its player through
+/// both wrapper pages.
+String vidsrcUrl(String videoUrl, {String? subtitleUrl, int? startAt}) => _withParams(videoUrl.replaceAll('vidsrc.icu', 'vidsrc2.ru'), {
   'autoplay': '1',
   'sub': _subtitleLang,
   'ds_lang': _subtitleLang,
+  if (startAt != null) 'startAt': '$startAt',
   'sub_url': subtitleUrl,
 });
 

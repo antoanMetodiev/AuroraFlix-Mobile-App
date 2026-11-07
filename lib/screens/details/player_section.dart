@@ -49,7 +49,7 @@ const _bgAudioPlayer2 = 8;
 
 /// The players that can be told where to start: by their URL, EmbedMaster (5)
 /// by a message, ours (7) by its fragment.
-const _resumablePlayers = {2, 3, 4, 5, 6, 7};
+const _resumablePlayers = {1, 2, 3, 4, 5, 6, 7};
 
 /// How often the time is counted for a player that reports nothing.
 const _estimateTick = Duration(seconds: 10);
@@ -269,7 +269,7 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
     return {
       _bgAudioPlayer: bgAudioMaster == null ? null : bgPlayerUrl(bgAudioMaster, subtitleUrl: subtitleUrl, title: widget.title, startAt: startAt),
       _bgAudioPlayer2: filmi2k,
-      1: widget.videoUrl.isEmpty ? null : vidsrcUrl(widget.videoUrl, subtitleUrl: _vidsrcUsesOurSubs ? subtitleUrl : null),
+      1: widget.videoUrl.isEmpty ? null : vidsrcUrl(widget.videoUrl, subtitleUrl: _vidsrcUsesOurSubs ? subtitleUrl : null, startAt: startAt),
       2: ref == null ? null : vidfastUrl(ref, startAt: startAt),
       3: ref == null ? null : cinesrcUrl(ref, startAt: startAt),
       4: ref == null || subtitleUrl == null ? null : vidlinkUrl(ref, subtitleUrl, startAt: startAt),
@@ -390,6 +390,8 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
       });
     }
 
+    // Signed in, the positions are the account's, once they've loaded.
+    ref.watch(watchProgressReadyProvider);
     if (!_hasStarted) _readResume();
 
     final hasOwn = subtitleUrl != null;

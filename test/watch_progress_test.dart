@@ -1,9 +1,17 @@
+import 'dart:convert';
+
+import 'package:auroraflix/core/api/api_client.dart';
 import 'package:auroraflix/core/i18n/locale.dart';
 import 'package:auroraflix/core/library/watch_progress.dart';
 import 'package:auroraflix/screens/details/player_telemetry.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// Signed out: the positions stay on the device.
+final signedOut = progressAccountProvider.overrideWithValue((known: true, userId: null));
 
 void main() {
   late ProviderContainer container;
@@ -13,7 +21,7 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    container = ProviderContainer(overrides: [sharedPreferencesProvider.overrideWithValue(prefs)]);
+    container = ProviderContainer(overrides: [sharedPreferencesProvider.overrideWithValue(prefs), signedOut]);
     progress = container.read(watchProgressProvider.notifier);
   });
 
@@ -45,7 +53,7 @@ void main() {
     test('survives a restart', () async {
       progress.save(movie, 100, 8888, title: 'Генезис', image: 'https://x/y.jpg', approximate: true);
       final prefs = await SharedPreferences.getInstance();
-      final fresh = ProviderContainer(overrides: [sharedPreferencesProvider.overrideWithValue(prefs)]);
+      final fresh = ProviderContainer(overrides: [sharedPreferencesProvider.overrideWithValue(prefs), signedOut]);
       addTearDown(fresh.dispose);
       final entry = fresh.read(watchProgressProvider)[movie.key]!;
       expect(entry.seconds, 100);
@@ -73,6 +81,67 @@ void main() {
       progress.save(const ProgressTarget.episode('1396', '2', '5'), 900, 2800);
       progress.dismiss(isSeries: true, tmdbId: '1396');
       expect(saved().keys, ['tv:1396:2:4']);
+    });
+  });
+
+  group('signed in', () {
+    late ProviderContainer account;
+    late List<http.Request> requests;
+
+    setUp(() {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      requests = [];
+      final client = MockClient((request) async {
+        requests.add(request);
+        if (request.method == 'GET') {
+          return http.Response(
+            jsonEncode([
+              {'key': 'movie:1', 'seconds': 600, 'duration': 6000, 'finished': false, 'approximate': false, 'title': 'От профила', 'updatedAt': 1},
+            ]),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        return http.Response('', 204);
+      });
+      account = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(container.read(sharedPreferencesProvider)),
+          progressAccountProvider.overrideWithValue((known: true, userId: 'user_1')),
+          apiClientProvider.overrideWithValue(ApiClient(httpClient: client)),
+        ],
+      );
+    });
+
+    tearDown(() => account.dispose());
+
+    test("uses the account's positions and leaves the device's alone", () async {
+      // Saved on this device while signed out.
+      progress.save(movie, 100, 8888);
+
+      expect(account.read(watchProgressReadyProvider), isFalse);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      expect(account.read(watchProgressReadyProvider), isTrue);
+      expect(account.read(watchProgressProvider).keys, ['movie:1']);
+
+      account.read(watchProgressProvider.notifier).save(const ProgressTarget.movie('2'), 300, 7000);
+      await Future<void>.delayed(Duration.zero);
+      final put = requests.singleWhere((request) => request.method == 'PUT');
+      expect(jsonDecode(put.body)['key'], 'movie:2');
+      expect(account.read(watchProgressProvider).keys, containsAll(['movie:1', 'movie:2']));
+
+      account.read(watchProgressProvider.notifier).dismiss(isSeries: false, tmdbId: '1');
+      await Future<void>.delayed(Duration.zero);
+      expect(requests.last.method, 'DELETE');
+      expect(requests.last.url.queryParametersAll['key'], ['movie:1']);
+
+      // Nothing of the account's reached the device, nor the device's the account.
+      final prefs = await SharedPreferences.getInstance();
+      final fresh = ProviderContainer(overrides: [sharedPreferencesProvider.overrideWithValue(prefs), signedOut]);
+      addTearDown(fresh.dispose);
+      expect(fresh.read(watchProgressProvider).keys, [movie.key]);
+      expect(requests.where((request) => request.body.contains('27205')), isEmpty);
     });
   });
 
