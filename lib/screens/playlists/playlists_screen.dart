@@ -7,6 +7,7 @@ import '../../core/library/playlists.dart';
 import '../../core/theme.dart';
 import '../../shell/app_shell.dart';
 import '../../widgets/footer.dart';
+import '../../widgets/library_hero.dart';
 import '../../widgets/loader.dart';
 import '../../widgets/pressable.dart';
 import 'playlist_card.dart';
@@ -35,9 +36,9 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
         onTap: () => setState(() => _creating = forceWhite ? true : !_creating),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
-            color: white ? Colors.white : Colors.transparent,
+            color: white ? Colors.white : Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(999),
             border: white ? null : Border.all(color: AppColors.fg(0.15)),
             boxShadow: white
@@ -63,49 +64,29 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
       padding: shellContentPadding(context),
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 32, 16, 64),
+          padding: const EdgeInsets.fromLTRB(16, 40, 16, 80),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.start,
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(t('playlists.title'), style: display(const TextStyle(fontSize: 30, fontWeight: FontWeight.w600, letterSpacing: -0.6))),
-                          if (playlists != null && playlists.isNotEmpty) ...[
-                            const SizedBox(width: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.fg(0.1),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(color: AppColors.fg(0.15)),
-                              ),
-                              child: Text(
-                                '${playlists.length}',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.fg(0.7)),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 448),
-                        child: Text(t('playlists.subtitle'), style: TextStyle(fontSize: 14, color: AppColors.fg(0.5))),
-                      ),
-                    ],
-                  ),
-                  newButton(),
-                ],
+              LibraryHero(
+                title: t('playlists.title'),
+                subtitle: t('playlists.subtitle'),
+                action: Align(alignment: Alignment.centerLeft, child: newButton()),
+                stats: playlists == null || playlists.isEmpty
+                    ? const []
+                    : [
+                        LibraryStat(icon: LucideIcons.listVideo, label: t('playlists.statPlaylists'), value: '${playlists.length}'),
+                        LibraryStat(
+                          icon: LucideIcons.globe,
+                          label: t('playlists.statPublic'),
+                          value: '${playlists.where((playlist) => playlist.isPublic).length}',
+                        ),
+                        LibraryStat(
+                          icon: LucideIcons.film,
+                          label: t('playlists.statTitles'),
+                          value: '${playlists.fold<int>(0, (sum, playlist) => sum + playlist.itemCount)}',
+                        ),
+                      ],
               ),
               const SizedBox(height: 32),
               AnimatedSize(
@@ -122,26 +103,44 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
               if (playlists == null)
                 const Loader()
               else if (playlists.isEmpty && !_creating)
-                SizedBox(
-                  height: MediaQuery.sizeOf(context).height * 0.3,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 56),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Colors.white.withValues(alpha: 0.08), Colors.white.withValues(alpha: 0.03), Colors.transparent],
+                    ),
+                  ),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.fg(0.05)),
-                        child: Icon(LucideIcons.listVideo, size: 24, color: AppColors.fg(0.3)),
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(color: Colors.white.withValues(alpha: 0.55), blurRadius: 30, spreadRadius: -8, offset: const Offset(0, 10)),
+                          ],
+                        ),
+                        child: const Icon(LucideIcons.listVideo, size: 26, color: AppColors.onWhite),
                       ),
                       const SizedBox(height: 12),
-                      Text(t('playlists.emptyTitle'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 12),
+                      Text(
+                        t('playlists.emptyTitle'),
+                        textAlign: TextAlign.center,
+                        style: display(const TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
+                      ),
+                      const SizedBox(height: 4),
                       Text(
                         t('playlists.emptyDesc'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 14, color: AppColors.fg(0.5)),
+                        style: TextStyle(fontSize: 14, color: AppColors.fg(0.55)),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
                       newButton(forceWhite: true),
                     ],
                   ),
@@ -149,7 +148,7 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
               else
                 for (final playlist in playlists)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.only(bottom: 20),
                     child: PlaylistCard(key: ValueKey(playlist.id), playlist: playlist, canManage: true),
                   ),
             ],

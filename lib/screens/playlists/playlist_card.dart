@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,7 @@ import '../../core/theme.dart';
 import '../../core/tmdb.dart';
 import '../../models/models.dart';
 import '../../widgets/fade_in_image.dart';
+import '../../widgets/library_poster_card.dart';
 import '../../widgets/loader.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/rating_ring.dart';
@@ -67,6 +69,9 @@ class _PlaylistCardState extends ConsumerState<PlaylistCard> {
   Widget build(BuildContext context) {
     final t = ref.watch(translatorProvider);
     final playlist = widget.playlist;
+    // Titles / posters in the app's current language.
+    final items = localizeLibraryItems(ref, _items);
+    final coverPosters = [for (final item in items ?? const <LibraryItem>[]) ?tmdbImage(item.posterImgURL, TmdbSize.w342)].take(4).toList();
 
     Widget header;
     if (_editing) {
@@ -113,33 +118,10 @@ class _PlaylistCardState extends ConsumerState<PlaylistCard> {
         pressedScale: 1,
         onTap: () => setState(() => _expanded = !_expanded),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(1.5),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Colors.white.withValues(alpha: 0.2), Colors.white.withValues(alpha: 0.05)],
-                  ),
-                ),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: playlist.isPublic ? Colors.white.withValues(alpha: 0.1) : AppColors.surface,
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Icon(
-                    playlist.isPublic ? LucideIcons.globe : LucideIcons.lock,
-                    size: 17,
-                    color: playlist.isPublic ? Colors.white : AppColors.fg(0.5),
-                  ),
-                ),
-              ),
+              _CoverMosaic(posters: coverPosters),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
@@ -147,15 +129,22 @@ class _PlaylistCardState extends ConsumerState<PlaylistCard> {
                   children: [
                     Text(
                       playlist.name,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -0.3),
+                      style: display(const TextStyle(fontSize: 20, height: 1.15, fontWeight: FontWeight.w600, letterSpacing: -0.3)),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${playlist.isPublic ? t('playlists.visibilityPublic') : t('playlists.visibilityPrivate')} · '
-                      '${t('playlists.itemCount', {'count': playlist.itemCount})}',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.fg(0.45)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _Chip(
+                          icon: playlist.isPublic ? LucideIcons.globe : LucideIcons.lock,
+                          label: playlist.isPublic ? t('playlists.visibilityPublic') : t('playlists.visibilityPrivate'),
+                          white: playlist.isPublic,
+                        ),
+                        _Chip(icon: LucideIcons.film, label: t('playlists.itemCount', {'count': _items?.length ?? playlist.itemCount})),
+                      ],
                     ),
                   ],
                 ),
@@ -163,17 +152,22 @@ class _PlaylistCardState extends ConsumerState<PlaylistCard> {
               if (widget.canManage) ...[
                 RoundIconButton(icon: LucideIcons.pencil, label: t('playlists.rename'), onTap: () => setState(() => _editing = true)),
                 const SizedBox(width: 6),
-                RoundIconButton(
-                  icon: LucideIcons.trash2,
-                  label: t('playlists.delete'),
-                  onTap: () => setState(() => _confirmingDelete = true),
-                ),
+                RoundIconButton(icon: LucideIcons.trash2, label: t('playlists.delete'), onTap: () => setState(() => _confirmingDelete = true)),
                 const SizedBox(width: 8),
               ],
-              AnimatedRotation(
-                turns: _expanded ? 0.5 : 0,
-                duration: const Duration(milliseconds: 300),
-                child: Icon(LucideIcons.chevronDown, size: 18, color: AppColors.fg(0.4)),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.04),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                ),
+                child: AnimatedRotation(
+                  turns: _expanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Icon(LucideIcons.chevronDown, size: 17, color: AppColors.fg(0.5)),
+                ),
               ),
             ],
           ),
@@ -184,18 +178,57 @@ class _PlaylistCardState extends ConsumerState<PlaylistCard> {
     final showBody = _expanded && !_editing && !_confirmingDelete;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 500),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _expanded ? Colors.white.withValues(alpha: 0.2) : AppColors.fg(0.1)),
-        boxShadow: _expanded
-            ? [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 50, spreadRadius: -20, offset: const Offset(0, 20))]
-            : null,
+        color: const Color(0xFF0E0E10),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: Colors.white.withValues(alpha: _expanded ? 0.15 : 0.1)),
+        boxShadow: _expanded ? [BoxShadow(color: Colors.black.withValues(alpha: 0.8), blurRadius: 70, spreadRadius: -30, offset: const Offset(0, 30))] : null,
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
+          // The newest title's poster, blurred behind the header.
+          if (coverPosters.isNotEmpty)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              height: 192,
+              // Its own layer, painted once — scrolling never re-runs the blur.
+              child: IgnorePointer(
+                child: RepaintBoundary(
+                  // Scaled up 25% for the blur — clipped so it never shows past the veil.
+                  child: ClipRect(
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Transform.scale(
+                          scale: 1.25,
+                          child: ImageFiltered(
+                            imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24, tileMode: TileMode.decal),
+                            // A small poster is plenty under a blur this strong.
+                            child: AuroraImage(url: coverPosters.first),
+                          ),
+                        ),
+                        // The site shows it at 30% over the card; a dark veil does
+                        // the same without an extra layer.
+                        const DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0xB30E0E10), Color(0xC70E0E10), Color(0xFF0E0E10)],
+                              stops: [0, 0.45, 0.85],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             left: 0,
             right: 0,
@@ -225,9 +258,9 @@ class _PlaylistCardState extends ConsumerState<PlaylistCard> {
                     ? const SizedBox(width: double.infinity)
                     : Container(
                         decoration: BoxDecoration(
-                          border: Border(top: BorderSide(color: AppColors.fg(0.1))),
+                          border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
                         ),
-                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -265,19 +298,23 @@ class _PlaylistCardState extends ConsumerState<PlaylistCard> {
                                 padding: EdgeInsets.only(top: widget.canManage ? 20 : 0),
                                 child: LayoutBuilder(
                                   builder: (context, constraints) {
-                                    final width = (constraints.maxWidth - 24) / 3;
+                                    // Two a row on a phone, three from 460px (the site's grid).
+                                    final columns = constraints.maxWidth >= 720 ? 4 : (constraints.maxWidth >= 428 ? 3 : 2);
+                                    final width = (constraints.maxWidth - 12 * (columns - 1)) / columns;
                                     return Wrap(
                                       spacing: 12,
                                       runSpacing: 12,
                                       children: [
-                                        // Titles / posters in the app's current language.
-                                        for (final item in localizeLibraryItems(ref, _items)!.take(_visibleItems))
+                                        for (final item in items!.take(_visibleItems))
                                           SizedBox(
                                             width: width,
-                                            child: LibraryPosterTile(
+                                            child: LibraryPosterCard(
+                                              key: ValueKey(item.id),
                                               item: item,
+                                              onTap: () => closeModalsAnd(context, (context) => openLibraryItem(context, item)),
                                               // Every playlist starts expanded, so most tiles sit below the fold.
                                               lazy: true,
+                                              compact: true,
                                               removeLabel: t('playlists.removeItemAria'),
                                               onRemove: widget.canManage ? () => _remove(item.id) : null,
                                             ),
@@ -299,6 +336,92 @@ class _PlaylistCardState extends ConsumerState<PlaylistCard> {
       ),
     );
   }
+}
+
+/// The playlist's cover: its first four posters in a 2×2 tile (fewer: the
+/// first one fills it, none: an icon).
+class _CoverMosaic extends StatelessWidget {
+  const _CoverMosaic({required this.posters});
+
+  final List<String> posters;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget content;
+    if (posters.isEmpty) {
+      content = Center(child: Icon(LucideIcons.listVideo, size: 26, color: Colors.white.withValues(alpha: 0.6)));
+    } else if (posters.length < 4) {
+      content = AuroraImage(url: posters.first);
+    } else {
+      content = ColoredBox(
+        color: Colors.black,
+        child: Column(
+          children: [
+            for (final row in [posters.sublist(0, 2), posters.sublist(2, 4)])
+              Expanded(
+                child: Row(
+                  children: [
+                    for (final poster in row)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(0.5),
+                          child: AuroraImage(url: poster),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white.withValues(alpha: 0.2), Colors.white.withValues(alpha: 0.04)],
+        ),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.8), blurRadius: 30, spreadRadius: -10, offset: const Offset(0, 10))],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: content,
+    );
+  }
+}
+
+/// Small pill under the playlist's name — white for "Public".
+class _Chip extends StatelessWidget {
+  const _Chip({required this.icon, required this.label, this.white = false});
+
+  final IconData icon;
+  final String label;
+  final bool white;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      color: white ? Colors.white : Colors.white.withValues(alpha: 0.06),
+      borderRadius: BorderRadius.circular(999),
+      border: white ? null : Border.all(color: Colors.white.withValues(alpha: 0.12)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 11, color: white ? AppColors.onWhite : AppColors.fg(0.75)),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: white ? AppColors.onWhite : AppColors.fg(0.75)),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Quiet full-width "Load more" under a paged list.
@@ -396,11 +519,7 @@ class VisibilityToggle extends ConsumerWidget {
                     const SizedBox(width: 6),
                     Text(
                       label,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: value == isPublic ? AppColors.onWhite : AppColors.fg(0.6),
-                      ),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: value == isPublic ? AppColors.onWhite : AppColors.fg(0.6)),
                     ),
                   ],
                 ),
@@ -414,13 +533,7 @@ class VisibilityToggle extends ConsumerWidget {
 
 /// Name field + visibility + ✕ / ✓ — used to create and to rename.
 class _PlaylistForm extends ConsumerStatefulWidget {
-  const _PlaylistForm({
-    required this.initialName,
-    required this.initialPublic,
-    required this.confirmLabel,
-    required this.onCancel,
-    required this.onSubmit,
-  });
+  const _PlaylistForm({required this.initialName, required this.initialPublic, required this.confirmLabel, required this.onCancel, required this.onSubmit});
 
   final String initialName;
   final bool initialPublic;
@@ -472,12 +585,7 @@ class PlaylistFormState extends ConsumerState<_PlaylistForm> {
               const Spacer(),
               RoundIconButton(icon: LucideIcons.x, label: t('playlists.cancel'), onTap: widget.onCancel),
               const SizedBox(width: 8),
-              RoundIconButton(
-                icon: LucideIcons.check,
-                label: widget.confirmLabel,
-                primary: true,
-                onTap: _saving || _name.text.trim().isEmpty ? null : _submit,
-              ),
+              RoundIconButton(icon: LucideIcons.check, label: widget.confirmLabel, primary: true, onTap: _saving || _name.text.trim().isEmpty ? null : _submit),
             ],
           ),
         ],
@@ -697,13 +805,7 @@ class LibraryPosterTile extends StatelessWidget {
 /// Dashed "Add titles" button that unfolds a movie/series search; each
 /// result has a + (or ✓ once it's in the playlist).
 class _AddItemsPanel extends ConsumerStatefulWidget {
-  const _AddItemsPanel({
-    required this.playlistId,
-    required this.existingIds,
-    required this.open,
-    required this.onToggle,
-    required this.onAdded,
-  });
+  const _AddItemsPanel({required this.playlistId, required this.existingIds, required this.open, required this.onToggle, required this.onAdded});
 
   final String playlistId;
   final Set<String> existingIds;
@@ -763,9 +865,7 @@ class _AddItemsPanelState extends ConsumerState<_AddItemsPanel> {
 
   Future<void> _loadMore() async {
     setState(() => _loadingMore = true);
-    final more = await ref
-        .read(catalogApiProvider)
-        .searchSuggestions(_type, _query.text.trim(), limit: _searchPageSize, offset: _results.length);
+    final more = await ref.read(catalogApiProvider).searchSuggestions(_type, _query.text.trim(), limit: _searchPageSize, offset: _results.length);
     if (!mounted) return;
     setState(() {
       _results = [..._results, ...more];
@@ -804,26 +904,15 @@ class _AddItemsPanelState extends ConsumerState<_AddItemsPanel> {
             painter: _DashedBorderPainter(color: widget.open ? Colors.white.withValues(alpha: 0.3) : AppColors.fg(0.15)),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: widget.open ? AppColors.fg(0.05) : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-              ),
+              decoration: BoxDecoration(color: widget.open ? AppColors.fg(0.05) : Colors.transparent, borderRadius: BorderRadius.circular(16)),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    widget.open ? LucideIcons.x : LucideIcons.plus,
-                    size: 15,
-                    color: widget.open ? AppColors.foreground : AppColors.fg(0.6),
-                  ),
+                  Icon(widget.open ? LucideIcons.x : LucideIcons.plus, size: 15, color: widget.open ? AppColors.foreground : AppColors.fg(0.6)),
                   const SizedBox(width: 8),
                   Text(
                     t('playlists.addTitles'),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: widget.open ? AppColors.foreground : AppColors.fg(0.6),
-                    ),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: widget.open ? AppColors.foreground : AppColors.fg(0.6)),
                   ),
                 ],
               ),
@@ -886,11 +975,7 @@ class _AddItemsPanelState extends ConsumerState<_AddItemsPanel> {
                                     ),
                                     child: Text(
                                       type == RecordType.movie ? t('search.movies') : t('search.series'),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: _type == type ? AppColors.onWhite : AppColors.fg(0.6),
-                                      ),
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _type == type ? AppColors.onWhite : AppColors.fg(0.6)),
                                     ),
                                   ),
                                 ),
@@ -925,11 +1010,7 @@ class _AddItemsPanelState extends ConsumerState<_AddItemsPanel> {
                                     if (record.posterImgURL != null)
                                       ClipRRect(
                                         borderRadius: BorderRadius.circular(8),
-                                        child: SizedBox(
-                                          width: 42,
-                                          height: 60,
-                                          child: AuroraImage(url: tmdbImage(record.posterImgURL, TmdbSize.w342)),
-                                        ),
+                                        child: SizedBox(width: 42, height: 60, child: AuroraImage(url: tmdbImage(record.posterImgURL, TmdbSize.w342))),
                                       ),
                                     const SizedBox(width: 12),
                                     Expanded(

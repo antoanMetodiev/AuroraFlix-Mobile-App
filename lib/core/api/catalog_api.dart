@@ -87,6 +87,13 @@ class CatalogApi {
     return ApiClient.unwrapList(await _api.getJson(path, {'query': query})).map(Actor.fromJson).toList();
   }
 
+  /// One actor in the UI language (name, biography, place of birth translated
+  /// by the services); null when unknown or on failure.
+  Future<Actor?> actor(String imdbId) async {
+    final data = await _api.getJson('/actor/${Uri.encodeComponent(imdbId)}');
+    return data is Map<String, dynamic> ? Actor.fromJson(data) : null;
+  }
+
   /// An actor's other titles in the catalog (the actor page's "Latest Works").
   Future<List<ActorWork>> actorLatestWorks(String imdbId) async =>
       ApiClient.unwrapList(await _api.getJson('/actor/latest-works/${Uri.encodeComponent(imdbId)}')).map(ActorWork.fromJson).toList();

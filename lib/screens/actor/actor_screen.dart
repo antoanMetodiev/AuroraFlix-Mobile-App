@@ -23,12 +23,31 @@ import '../../widgets/loader.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/rating_ring.dart';
 import '../details/details_background.dart';
+import '../playlists/playlist_card.dart' show PillTextField;
 
 final _latestWorksProvider = FutureProvider.family<List<ActorWork>, String>((ref, imdbId) async {
   final works = await ref.watch(catalogApiProvider).actorLatestWorks(imdbId);
   // Newest first; titles without a release date go last.
   return [...works]..sort((a, b) => releaseDateValue(b.releaseDate).compareTo(releaseDateValue(a.releaseDate)));
 });
+
+/// The actor again, in the current language — the copy handed over from the
+/// cast list is in whatever language the app was in then. Re-runs on a
+/// language switch (the API client is rebuilt with the new ?lang).
+final _actorProvider = FutureProvider.family<Actor?, String>((ref, imdbId) => ref.watch(catalogApiProvider).actor(imdbId));
+
+/// Lower-cased with the common accents folded, so "pokemon" finds "Pokémon".
+String _fold(String text) {
+  const from = 'àáâãäåāăąçćčďèéêëēęěìíîïīñńňòóôõöøōřśšťùúûüūůýÿžźż';
+  const to = 'aaaaaaaaacccdeeeeeeeiiiiinnnooooooorsstuuuuuuyyzzz';
+  final lower = text.toLowerCase().trim();
+  final out = StringBuffer();
+  for (final char in lower.split('')) {
+    final index = from.indexOf(char);
+    out.write(index >= 0 ? to[index] : char);
+  }
+  return out.toString();
+}
 
 /// Longer biographies start collapsed behind "Show more".
 const _bioPreviewChars = 520;
@@ -61,13 +80,22 @@ class ActorScreen extends ConsumerStatefulWidget {
 class _ActorScreenState extends ConsumerState<ActorScreen> {
   _Filter _filter = _Filter.all;
   bool _bioExpanded = false;
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = ref.watch(translatorProvider);
     final locale = ref.watch(localeProvider).name;
     final padding = shellContentPadding(context);
-    final actor = widget.actor;
+    final saved = widget.actor;
+    final savedImdb = saved?.imdbId;
+    final actor = (savedImdb == null ? null : ref.watch(_actorProvider(savedImdb)).value) ?? saved;
 
     if (actor == null) {
       return Padding(
@@ -300,6 +328,8 @@ class _ActorScreenState extends ConsumerState<ActorScreen> {
               works: works == null || works.hasError ? const [] : works.value,
               filter: _filter,
               onFilter: (filter) => setState(() => _filter = filter),
+              search: _search,
+              onSearch: () => setState(() {}),
               locale: locale,
               action: actor.imdbId == null ? null : _MoreMoviesButton(imdbId: actor.imdbId!, actorName: actor.nameInRealLife),
             ),
@@ -412,11 +442,23 @@ class _StatTile extends StatelessWidget {
 /// All / Movies / Series switch (only when there are both), then the grid.
 /// [works] is null while loading.
 class _Filmography extends ConsumerWidget {
-  const _Filmography({required this.works, required this.filter, required this.onFilter, required this.locale, this.action});
+  const _Filmography({
+    required this.works,
+    required this.filter,
+    required this.onFilter,
+    required this.search,
+    required this.onSearch,
+    required this.locale,
+    this.action,
+  });
 
   final List<ActorWork>? works;
   final _Filter filter;
   final ValueChanged<_Filter> onFilter;
+
+  /// The filmography search (title, original title or year).
+  final TextEditingController search;
+  final VoidCallback onSearch;
   final String locale;
   final Widget? action;
 
@@ -426,13 +468,20 @@ class _Filmography extends ConsumerWidget {
     final list = works ?? const <ActorWork>[];
     final seriesCount = list.where((work) => work.type == RecordType.series).length;
     final counts = {_Filter.all: list.length, _Filter.movies: list.length - seriesCount, _Filter.series: seriesCount};
+    final query = search.text.trim();
+    final needle = _fold(query);
     final shown = list
         .where(
-          (work) => switch (filter) {
-            _Filter.all => true,
-            _Filter.movies => work.type != RecordType.series,
-            _Filter.series => work.type == RecordType.series,
-          },
+          (work) =>
+              switch (filter) {
+                _Filter.all => true,
+                _Filter.movies => work.type != RecordType.series,
+                _Filter.series => work.type == RecordType.series,
+              } &&
+              (needle.isEmpty ||
+                  _fold(work.title).contains(needle) ||
+                  _fold(work.originalTitle ?? '').contains(needle) ||
+                  (work.releaseDate ?? '').startsWith(needle)),
         )
         .toList();
     final tabs = [
@@ -475,7 +524,29 @@ class _Filmography extends ConsumerWidget {
               ],
             ],
           ),
-          if (action != null) ...[const SizedBox(height: 16), action!],
+          // Same order as the site at phone width: heading, search, the button.
+          if (list.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            PillTextField(
+              controller: search,
+              hint: t('actor.searchWorks'),
+              prefixIcon: LucideIcons.search,
+              onChanged: (_) => onSearch(),
+              suffix: query.isEmpty
+                  ? null
+                  : Pressable(
+                      onTap: () {
+                        search.clear();
+                        onSearch();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Icon(LucideIcons.x, size: 14, color: AppColors.fg(0.55)),
+                      ),
+                    ),
+            ),
+          ],
+          if (action != null) ...[const SizedBox(height: 12), action!],
           if (works != null && counts[_Filter.movies]! > 0 && seriesCount > 0) ...[
             const SizedBox(height: 20),
             Container(
@@ -540,7 +611,7 @@ class _Filmography extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
               decoration: _card,
               child: Text(
-                t('actor.noWorks'),
+                query.isNotEmpty ? t('actor.noSearchResults', {'query': query}) : t('actor.noWorks'),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.fg(0.6)),
               ),

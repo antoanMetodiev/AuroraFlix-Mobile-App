@@ -69,10 +69,14 @@ class ActorWork {
     this.tmdbId,
     this.videoURL,
     this.releaseDate,
+    this.originalTitle,
   });
 
   final RecordType type;
   final String title;
+
+  /// The English title, when [title] is a translation (?lang).
+  final String? originalTitle;
   final String posterURL;
   final String tmdbRating;
   final String? tmdbId;
@@ -90,6 +94,7 @@ class ActorWork {
     tmdbId: _str(json['tmdbId']),
     videoURL: _str(json['videoURL']),
     releaseDate: _str(json['releaseDate']),
+    originalTitle: _str(json['originalTitle']),
   );
 }
 
