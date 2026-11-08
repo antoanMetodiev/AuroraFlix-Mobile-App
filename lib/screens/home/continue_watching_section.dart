@@ -15,7 +15,7 @@ import '../../models/models.dart';
 import '../../widgets/fade_in_image.dart';
 import '../../widgets/pressable.dart';
 
-const _maxItems = 12;
+const _maxItems = 20;
 const _cardWidth = 300.0;
 
 /// "Continue watching" (website: ContinueWatchingSection): a sideways row of
