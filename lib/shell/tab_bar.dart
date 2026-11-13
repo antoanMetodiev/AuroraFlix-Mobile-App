@@ -6,6 +6,7 @@ import '../core/theme.dart';
 import '../widgets/glass.dart';
 import '../widgets/pressable.dart';
 import 'nav_tabs.dart';
+import 'site_header.dart' show auroraGlowLine;
 
 /// Height of the floating bar itself, without the bottom gap / safe area —
 /// screens pad their scroll content by [AuroraTabBar.reservedHeight].
@@ -13,8 +14,8 @@ const double _barHeight = 60;
 const double _gap = 12;
 
 /// The floating bottom navigation from the website's MobileTabBar: the same
-/// glass island as the header (pale grey glass, hairline white border, soft
-/// white glow), inset from the screen edges. One white pill slides — with a
+/// dark glass as the header island (sheen, a glow line along the top edge,
+/// deep shadow, soft white glow), inset from the screen edges. One white pill slides — with a
 /// little overshoot — to the active tab's icon.
 class AuroraTabBar extends ConsumerWidget {
   const AuroraTabBar({super.key, required this.currentIndex, required this.onSelect});
@@ -35,65 +36,91 @@ class AuroraTabBar extends ConsumerWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
-          boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.28), blurRadius: 20, spreadRadius: -2)],
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.9), blurRadius: 40, spreadRadius: -14, offset: const Offset(0, -10)),
+            BoxShadow(color: Colors.white.withValues(alpha: 0.18), blurRadius: 22, spreadRadius: -6),
+          ],
         ),
         child: Glass(
-          // Tailwind neutral-700 (#404040) at 45%, like the site.
-          color: const Color(0xFF404040).withValues(alpha: 0.45),
+          // The site's bg-black/60 + border-white/15.
+          color: Colors.black.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 0.5),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-          child: SizedBox(
-            height: _barHeight - 12,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final tabWidth = constraints.maxWidth / navTabs.length;
-                final hasActive = currentIndex >= 0 && currentIndex < navTabs.length;
-                return Stack(
-                  children: [
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 500),
-                      curve: _pillCurve,
-                      left: tabWidth * (hasActive ? currentIndex : 0) + (tabWidth - _pillWidth) / 2,
-                      top: _pillTop,
-                      child: AnimatedOpacity(
-                        duration: const Duration(milliseconds: 300),
-                        opacity: hasActive ? 1 : 0,
-                        child: Container(
-                          width: _pillWidth,
-                          height: _pillHeight,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+          child: Stack(
+            children: [
+              // Same sheen + glow line as the header island, mirrored to the top edge.
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(999),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.white.withValues(alpha: 0.6),
-                                blurRadius: 16,
-                                spreadRadius: -3,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.white.withValues(alpha: 0.08), Colors.transparent],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    Row(
-                      children: [
-                        for (var index = 0; index < navTabs.length; index++)
-                          Expanded(
-                            child: _TabItem(
-                              tab: navTabs[index],
-                              label: t(navTabs[index].shortLabelKey ?? navTabs[index].labelKey),
-                              active: index == currentIndex,
-                              onTap: () => onSelect(index),
+                      const Expanded(child: SizedBox()),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(left: 40, right: 40, top: 0, height: 1, child: IgnorePointer(child: auroraGlowLine())),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                child: SizedBox(
+                  height: _barHeight - 12,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final tabWidth = constraints.maxWidth / navTabs.length;
+                      final hasActive = currentIndex >= 0 && currentIndex < navTabs.length;
+                      return Stack(
+                        children: [
+                          AnimatedPositioned(
+                            duration: const Duration(milliseconds: 500),
+                            curve: _pillCurve,
+                            left: tabWidth * (hasActive ? currentIndex : 0) + (tabWidth - _pillWidth) / 2,
+                            top: _pillTop,
+                            child: AnimatedOpacity(
+                              duration: const Duration(milliseconds: 300),
+                              opacity: hasActive ? 1 : 0,
+                              child: Container(
+                                width: _pillWidth,
+                                height: _pillHeight,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(999),
+                                  boxShadow: [
+                                    BoxShadow(color: Colors.white.withValues(alpha: 0.6), blurRadius: 16, spreadRadius: -3, offset: const Offset(0, 4)),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                      ],
-                    ),
-                  ],
-                );
-              },
-            ),
+                          Row(
+                            children: [
+                              for (var index = 0; index < navTabs.length; index++)
+                                Expanded(
+                                  child: _TabItem(
+                                    tab: navTabs[index],
+                                    label: t(navTabs[index].shortLabelKey ?? navTabs[index].labelKey),
+                                    active: index == currentIndex,
+                                    onTap: () => onSelect(index),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

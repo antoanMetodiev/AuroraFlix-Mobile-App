@@ -41,7 +41,7 @@ class ContinueWatchingSection extends ConsumerWidget {
     if (cards.isEmpty) return const SizedBox.shrink();
 
     return ColoredBox(
-      color: AppColors.background,
+      color: Colors.transparent,
       child: Padding(
         padding: const EdgeInsets.only(top: 12, bottom: 8),
         child: Column(

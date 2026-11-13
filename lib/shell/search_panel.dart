@@ -160,9 +160,9 @@ class _TypeSwitch extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.fg(0.05),
+        color: Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.fg(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Row(
         children: [
@@ -178,6 +178,14 @@ class _TypeSwitch extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: type == value ? Colors.white : Colors.white.withValues(alpha: 0),
                     borderRadius: BorderRadius.circular(999),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withValues(alpha: type == value ? 0.5 : 0),
+                        blurRadius: 16,
+                        spreadRadius: -4,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Text(
                     labels[type]!,

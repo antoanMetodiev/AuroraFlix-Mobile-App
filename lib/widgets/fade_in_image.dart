@@ -86,6 +86,21 @@ class AuroraImage extends StatelessWidget {
   }
 }
 
+/// The same image source [AuroraImage] uses — disk-cached on a phone, the
+/// cache-busted CORS fetch in the browser (see AuroraImage) — as a bare
+/// [ImageProvider], for widgets that animate the image themselves.
+ImageProvider auroraImageProvider(String source) {
+  if (kIsWeb) {
+    final uri = Uri.parse(source);
+    final bustable = const {'image.tmdb.org', 'res.cloudinary.com', 'img.clerk.com'}.contains(uri.host);
+    return NetworkImage(
+      bustable ? uri.replace(queryParameters: {...uri.queryParameters, 'app': '1'}).toString() : source,
+      webHtmlElementStrategy: bustable ? WebHtmlElementStrategy.never : WebHtmlElementStrategy.fallback,
+    );
+  }
+  return CachedNetworkImageProvider(source);
+}
+
 /// Shows a [Shimmer] until any part of [child]'s box is on screen, then
 /// [child] for good (it isn't unloaded again on scrolling away).
 class _LazyLoad extends StatefulWidget {

@@ -13,6 +13,7 @@ import '../../widgets/cinema_record_card.dart';
 import '../../widgets/footer.dart';
 import '../../widgets/loader.dart';
 import '../../widgets/pagination.dart';
+import '../details/details_background.dart';
 import 'auto_order_notice.dart';
 import 'discover_filters.dart';
 import 'list_background.dart';
@@ -67,12 +68,18 @@ class CatalogScreen extends ConsumerWidget {
         ? '${t.genre(query.genre!)} $typeLabel'
         : typeLabel;
 
+    // Same blurred-poster background as the Watchlist: the first title on
+    // this page. ListBackground stays under it as the fallback while the
+    // results load or when nothing matches.
+    final backdropPath = page.value?.records.where((record) => record.posterImgURL != null).firstOrNull?.posterImgURL;
+
     // The list scrolls over a fixed background, like the details screen.
     return ColoredBox(
       color: AppColors.background,
       child: Stack(
         children: [
           const Positioned.fill(child: ListBackground()),
+          if (backdropPath != null) Positioned.fill(child: BlurredPageBackdrop(path: backdropPath)),
           ListView(
             padding: shellContentPadding(context),
             children: [
@@ -98,19 +105,6 @@ class CatalogScreen extends ConsumerWidget {
                       onPage: (page) => context.go(query.location(page: page)),
                     ),
                   ],
-                ),
-              ),
-              // Fades the background out into the footer's solid black.
-              const SizedBox(
-                height: 120,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, AppColors.background],
-                    ),
-                  ),
                 ),
               ),
               const SiteFooter(),

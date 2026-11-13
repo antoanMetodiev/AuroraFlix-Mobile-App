@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/i18n/locale.dart';
 import '../core/theme.dart';
 import 'reveal.dart';
+import 'seo_intro.dart';
 import './pressable.dart';
 
 const _linkedInUrl = 'https://www.linkedin.com/in/antoan-metodiev-875518303';
@@ -20,7 +21,11 @@ const _columns = [
 const _socialIcons = [FontAwesomeIcons.facebook, FontAwesomeIcons.instagram, FontAwesomeIcons.twitter, FontAwesomeIcons.youtube];
 
 /// The website's Footer, phone layout: brand block, then the four link
-/// columns in a 2×2 grid.
+/// columns in a 2×2 grid. Like the site's root layout, it brings the
+/// [SeoIntro] (title, intro, genre links) along above it, then the fade
+/// that melts the page's background (the blurred poster, where a screen has
+/// one) into the footer's solid black — so every screen with the footer has
+/// all three, in that order.
 class SiteFooter extends ConsumerWidget {
   const SiteFooter({super.key});
 
@@ -29,6 +34,28 @@ class SiteFooter extends ConsumerWidget {
     final t = ref.watch(translatorProvider);
     final muted = AppColors.fg(0.5);
 
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const RevealOnScroll(child: SeoIntro()),
+        const SizedBox(
+          height: 120,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, AppColors.background],
+              ),
+            ),
+          ),
+        ),
+        _footer(t, muted),
+      ],
+    );
+  }
+
+  Widget _footer(Translator t, Color muted) {
     return Container(
       color: AppColors.background,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 64),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../core/theme.dart';
 
 /// Header dropdown panel (search, menu): fades and scales in from the corner
 /// it's anchored to — the site's `scale-95 opacity-0` → `scale-100
@@ -38,11 +37,14 @@ class Popover extends StatelessWidget {
                 : Container(
                     width: width,
                     padding: const EdgeInsets.all(8),
+                    // The site's NAV_PANEL: near-black glass, a brighter hairline, a deep shadow.
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.fg(0.1)),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 45, offset: const Offset(0, 20))],
+                      color: const Color(0xFF0A0A0A).withValues(alpha: 0.97),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.95), blurRadius: 70, spreadRadius: -25, offset: const Offset(0, 30)),
+                      ],
                     ),
                     child: child,
                   ),

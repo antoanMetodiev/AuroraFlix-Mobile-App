@@ -333,19 +333,6 @@ class _ActorScreenState extends ConsumerState<ActorScreen> {
               locale: locale,
               action: actor.imdbId == null ? null : _MoreMoviesButton(imdbId: actor.imdbId!, actorName: actor.nameInRealLife),
             ),
-            // Fades the background out into the footer's solid black.
-            const SizedBox(
-              height: 120,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, AppColors.background],
-                  ),
-                ),
-              ),
-            ),
             const SiteFooter(),
           ],
         ),

@@ -10,6 +10,7 @@ import '../../widgets/footer.dart';
 import '../../widgets/library_hero.dart';
 import '../../widgets/loader.dart';
 import '../../widgets/pressable.dart';
+import '../details/details_background.dart';
 import 'playlist_card.dart';
 
 /// "Playlists" (website: PlaylistsView): heading with the count, "New
@@ -24,6 +25,10 @@ class PlaylistsScreen extends ConsumerStatefulWidget {
 
 class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
   bool _creating = false;
+
+  /// The first playlist's first poster (a TMDB path), reported by its card
+  /// once its titles load — the page's blurred background, like the Watchlist.
+  String? _coverPoster;
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +65,12 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
       );
     }
 
-    return ListView(
+    final backdrop = playlists != null && playlists.isNotEmpty ? _coverPoster : null;
+
+    return Stack(
+      children: [
+        if (backdrop != null) Positioned.fill(child: BlurredPageBackdrop(path: backdrop)),
+        ListView(
       padding: shellContentPadding(context),
       children: [
         Padding(
@@ -149,12 +159,23 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                 for (final playlist in playlists)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 20),
-                    child: PlaylistCard(key: ValueKey(playlist.id), playlist: playlist, canManage: true),
+                    child: PlaylistCard(
+                      key: ValueKey(playlist.id),
+                      playlist: playlist,
+                      canManage: true,
+                      onCoverPoster: playlist == playlists.first
+                          ? (path) {
+                              if (mounted && path != _coverPoster) setState(() => _coverPoster = path);
+                            }
+                          : null,
+                    ),
                   ),
             ],
           ),
         ),
         const SiteFooter(),
+      ],
+        ),
       ],
     );
   }

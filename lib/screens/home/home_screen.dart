@@ -10,6 +10,7 @@ import '../../widgets/footer.dart';
 import '../../widgets/reveal.dart';
 import 'continue_watching_section.dart';
 import 'cult_section.dart';
+import 'home_backdrop.dart';
 import 'hero_section.dart';
 import 'home_data.dart';
 import 'home_scroll.dart';
@@ -59,9 +60,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final trending = ref.watch(trendingProvider).value;
     final padding = shellContentPadding(context);
 
-    return ColoredBox(
-      color: Colors.black,
-      child: RefreshIndicator(
+    // Everything below the hero sits on the Watchlist's blurred-poster
+    // background instead of flat black: a random trending title, a new one
+    // every time this tab is opened (see HomeBackdrop).
+    final posters = [
+      for (final record in [...?trending?.movies, ...?trending?.series])
+        if (record.posterImgURL != null) record.posterImgURL!,
+    ];
+
+    return Stack(
+      children: [
+        const Positioned.fill(child: ColoredBox(color: Colors.black)),
+        Positioned.fill(child: HomeBackdrop(posters: posters)),
+        RefreshIndicator(
         color: Colors.black,
         backgroundColor: Colors.white,
         edgeOffset: padding.top,
@@ -80,6 +91,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               loading: () => SizedBox(height: math.max(MediaQuery.sizeOf(context).height * 0.85 - 64, 560) + padding.top),
               error: (_, _) => const HeroSection(items: []),
             ),
+            // Melts the hero's black bottom edge into the blurred background
+            // below it. Takes no space: it hangs below the hero, under the
+            // sections that follow (they paint after it).
+            SizedBox(
+              height: 0,
+              child: OverflowBox(
+                alignment: Alignment.topCenter,
+                maxHeight: 160,
+                child: IgnorePointer(
+                  child: Container(
+                    height: 160,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.black, Colors.transparent],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
             // PAYMENTS DISABLED — nobody is charged for now (same on the website).
             // PricingSection(key: _pricingKey),
             const RevealOnScroll(child: ContinueWatchingSection()),
@@ -90,6 +123,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
       ),
+      ],
     );
   }
 }

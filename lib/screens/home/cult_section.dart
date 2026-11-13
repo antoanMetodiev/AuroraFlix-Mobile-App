@@ -26,7 +26,6 @@ class CultSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translatorProvider);
     return Container(
-      color: AppColors.background,
       padding: const EdgeInsets.only(top: 56, bottom: 32),
       child: Column(
         children: [

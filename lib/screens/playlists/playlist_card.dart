@@ -28,13 +28,18 @@ const _searchPageSize = 10;
 /// to "Add titles" and the playlist's posters. Rename and delete swap the
 /// header for an inline form / confirmation.
 class PlaylistCard extends ConsumerStatefulWidget {
-  const PlaylistCard({super.key, required this.playlist, required this.canManage, this.itemsPageSize});
+  const PlaylistCard({super.key, required this.playlist, required this.canManage, this.itemsPageSize, this.onCoverPoster});
 
   final Playlist playlist;
   final bool canManage;
 
   /// Show this many items at first, then this many more per "Load more".
   final int? itemsPageSize;
+
+  /// Told this playlist's first poster (a TMDB path; null when it has none)
+  /// whenever its titles load or change — the Playlists screen uses the first
+  /// card's as its blurred page background.
+  final ValueChanged<String?>? onCoverPoster;
 
   @override
   ConsumerState<PlaylistCard> createState() => _PlaylistCardState();
@@ -47,6 +52,10 @@ class _PlaylistCardState extends ConsumerState<PlaylistCard> {
   bool _confirmingDelete = false;
   bool _deleting = false;
   List<LibraryItem>? _items;
+
+  /// What was last passed to onCoverPoster, so it's only told about changes.
+  String? _reportedCover;
+  bool _hasReported = false;
   late int _visibleItems = widget.itemsPageSize ?? 1 << 30;
 
   @override
@@ -71,6 +80,15 @@ class _PlaylistCardState extends ConsumerState<PlaylistCard> {
     final playlist = widget.playlist;
     // Titles / posters in the app's current language.
     final items = localizeLibraryItems(ref, _items);
+    final report = widget.onCoverPoster;
+    if (report != null && items != null) {
+      final first = items.where((item) => item.posterImgURL != null).firstOrNull?.posterImgURL;
+      if (first != _reportedCover || !_hasReported) {
+        _hasReported = true;
+        _reportedCover = first;
+        WidgetsBinding.instance.addPostFrameCallback((_) => report(first));
+      }
+    }
     final coverPosters = [for (final item in items ?? const <LibraryItem>[]) ?tmdbImage(item.posterImgURL, TmdbSize.w342)].take(4).toList();
 
     Widget header;

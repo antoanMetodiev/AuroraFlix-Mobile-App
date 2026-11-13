@@ -50,13 +50,10 @@ class BlurredPageBackdrop extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           if (url != null)
-            // Scaled up 10% so the blur's soft, see-through edges stay off-screen.
-            Transform.scale(
-              scale: 1.1,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 12, sigmaY: 12, tileMode: TileMode.decal),
-                child: AuroraImage(url: url),
-              ),
+            ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 12, sigmaY: 12, tileMode: TileMode.decal),
+              // Keyed by url: a new image (e.g. the home screen's next pick) fades in afresh.
+              child: _BackdropImage(key: ValueKey(url), url: url),
             ),
           ColoredBox(color: Colors.black.withValues(alpha: 0.55)),
           // The "shadow": a vignette darkening the edges toward the page's black.
@@ -73,6 +70,61 @@ class BlurredPageBackdrop extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The website's BackdropImage: the image waits until it has actually
+/// loaded, then rises from black while gently settling from a slight zoom
+/// (1.18 → its resting 1.1, which keeps the blur's soft, see-through edges
+/// off-screen). Always animates — even when the image is already cached —
+/// so every visit gets the same smooth entrance. Only opacity and scale
+/// animate, never the blur.
+class _BackdropImage extends StatefulWidget {
+  const _BackdropImage({super.key, required this.url});
+
+  final String url;
+
+  @override
+  State<_BackdropImage> createState() => _BackdropImageState();
+}
+
+class _BackdropImageState extends State<_BackdropImage> {
+  /// The site's cubic-bezier(0.22, 1, 0.36, 1) over 1.8s.
+  static const _curve = Cubic(0.22, 1, 0.36, 1);
+  static const _duration = Duration(milliseconds: 1800);
+
+  bool _loaded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedScale(
+      scale: _loaded ? 1.1 : 1.18,
+      duration: _duration,
+      curve: _curve,
+      child: AnimatedOpacity(
+        opacity: _loaded ? 1 : 0,
+        duration: _duration,
+        curve: _curve,
+        child: Image(
+          image: auroraImageProvider(widget.url),
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          gaplessPlayback: true,
+          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+            // First frame decoded: start the entrance on the next frame, so
+            // it animates from 0 even when the image was already in memory.
+            if (frame != null && !_loaded) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && !_loaded) setState(() => _loaded = true);
+              });
+            }
+            return child;
+          },
+          errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+        ),
       ),
     );
   }

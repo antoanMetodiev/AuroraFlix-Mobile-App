@@ -6,7 +6,6 @@ import '../../core/library/last_viewed.dart';
 import '../../core/library/localized_titles.dart';
 import '../../core/library/watch_progress.dart';
 import '../../models/models.dart';
-import '../../core/theme.dart';
 import '../../widgets/work_carousel.dart';
 
 /// "Last Viewed" (website: LastViewedSection → WorkCarousel): the titles
@@ -25,8 +24,9 @@ class LastViewedSection extends ConsumerWidget {
     final progress = ref.watch(watchProgressProvider);
     final titles = LocalizedTitles.watch(ref, items.map((entry) => (isSeries: entry.type == RecordType.series, tmdbId: entry.tmdbId)));
 
+    // No background of its own: the home screen's blurred backdrop shows through.
     return ColoredBox(
-      color: AppColors.background,
+      color: Colors.transparent,
       child: WorkCarousel(
         heading: t('carousel.lastViewed'),
         items: [
