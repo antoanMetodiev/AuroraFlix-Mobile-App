@@ -15,11 +15,14 @@ extension on SortOption {
 }
 
 class DiscoverFilters {
-  const DiscoverFilters({this.genre, this.year, this.actor, this.sort, this.bgAudio = false});
+  const DiscoverFilters({this.genre, this.year, this.actor, this.network, this.sort, this.bgAudio = false});
 
   final String? genre;
   final String? year;
   final String? actor;
+
+  /// Series only: exact TMDB network name (the movies service ignores it).
+  final String? network;
   final SortOption? sort;
 
   /// Only titles with a Bulgarian dub (movies; the series service ignores it).
@@ -50,6 +53,7 @@ class CatalogApi {
     'genre': filters.genre,
     'year': filters.year,
     'actorName': filters.actor,
+    'network': filters.network,
     'sort': filters.sort?.param,
     'audio': filters.bgAudio ? 'bg' : null,
     'page': page - 1,
@@ -60,6 +64,7 @@ class CatalogApi {
     'genre': filters.genre,
     'year': filters.year,
     'actorName': filters.actor,
+    'network': filters.network,
     'audio': filters.bgAudio ? 'bg' : null,
   });
 

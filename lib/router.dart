@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/api/catalog_api.dart';
 import 'core/navigation.dart';
+import 'core/networks.dart';
 import 'models/models.dart';
 import 'screens/account/subscription_screen.dart';
 import 'screens/actor/actor_screen.dart';
@@ -98,12 +99,15 @@ final appRouter = GoRouter(
 
 /// Everything a catalog list is filtered by.
 class CatalogQuery {
-  const CatalogQuery({required this.type, this.genre, this.year, this.actor, this.sort, this.bgAudio = false, this.search, this.page = 1});
+  const CatalogQuery({required this.type, this.genre, this.year, this.actor, this.network, this.sort, this.bgAudio = false, this.search, this.page = 1});
 
   final RecordType type;
   final String? genre;
   final String? year;
   final String? actor;
+
+  /// Series only: one of topNetworks (?network=Netflix).
+  final String? network;
   final SortOption? sort;
 
   /// Movies only: just the ones with a Bulgarian dub (?audio=bg).
@@ -111,7 +115,7 @@ class CatalogQuery {
   final String? search;
   final int page;
 
-  DiscoverFilters get filters => DiscoverFilters(genre: genre, year: year, actor: actor, sort: sort, bgAudio: bgAudio);
+  DiscoverFilters get filters => DiscoverFilters(genre: genre, year: year, actor: actor, network: network, sort: sort, bgAudio: bgAudio);
 
   static String? _nonEmpty(String? value) => value == null || value.isEmpty ? null : value;
 
@@ -122,6 +126,7 @@ class CatalogQuery {
       genre: _nonEmpty(params['genre']),
       year: _nonEmpty(params['year']),
       actor: _nonEmpty(params['actor']),
+      network: type == RecordType.series && isTopNetwork(params['network']) ? params['network'] : null,
       sort: switch (params['sort']) {
         'top_rated' => SortOption.topRated,
         'oldest' => SortOption.oldest,
@@ -143,6 +148,7 @@ class CatalogQuery {
       'genre': ?genre,
       'year': ?year,
       'actor': ?actor,
+      'network': ?network,
       if (sort == SortOption.topRated) 'sort': 'top_rated',
       if (sort == SortOption.oldest) 'sort': 'oldest',
       if (bgAudio) 'audio': 'bg',
@@ -155,6 +161,7 @@ class CatalogQuery {
     String? Function()? genre,
     String? Function()? year,
     String? Function()? actor,
+    String? Function()? network,
     SortOption? Function()? sort,
     bool? bgAudio,
   }) => CatalogQuery(
@@ -162,6 +169,7 @@ class CatalogQuery {
     genre: genre != null ? genre() : this.genre,
     year: year != null ? year() : this.year,
     actor: actor != null ? actor() : this.actor,
+    network: network != null ? network() : this.network,
     sort: sort != null ? sort() : this.sort,
     bgAudio: bgAudio ?? this.bgAudio,
     search: search,
@@ -176,11 +184,12 @@ class CatalogQuery {
       other.genre == genre &&
       other.year == year &&
       other.actor == actor &&
+      other.network == network &&
       other.sort == sort &&
       other.bgAudio == bgAudio &&
       other.search == search &&
       other.page == page;
 
   @override
-  int get hashCode => Object.hash(type, genre, year, actor, sort, bgAudio, search, page);
+  int get hashCode => Object.hash(type, genre, year, actor, network, sort, bgAudio, search, page);
 }

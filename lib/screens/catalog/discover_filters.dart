@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -12,6 +13,7 @@ import '../../core/dates.dart';
 import '../../core/i18n/dictionary.g.dart';
 import '../../core/i18n/locale.dart';
 import '../../core/navigation.dart';
+import '../../core/networks.dart';
 import '../../core/theme.dart';
 import '../../core/tmdb.dart';
 import '../../models/models.dart';
@@ -47,7 +49,7 @@ class _DiscoverFiltersState extends ConsumerState<DiscoverFiltersBar> {
   Widget build(BuildContext context) {
     final t = ref.watch(translatorProvider);
     final query = _query;
-    final activeCount = [query.genre, query.year, query.actor, query.sort, if (query.bgAudio) true].where((value) => value != null).length;
+    final activeCount = [query.genre, query.year, query.actor, query.network, query.sort, if (query.bgAudio) true].where((value) => value != null).length;
 
     final sortValue = switch (query.sort) {
       SortOption.topRated => 'top_rated',
@@ -167,6 +169,14 @@ class _DiscoverFiltersState extends ConsumerState<DiscoverFiltersBar> {
                     ),
                   ),
           ),
+          // Series only: the top networks as logo tiles, always in view (they
+          // scroll sideways) — website: the network row in DiscoverFilters.
+          if (query.type == RecordType.series)
+            _NetworkRow(
+              label: t('facts.networks'),
+              selected: query.network,
+              onPick: (name) => _navigate(query.copyWith(network: () => name)),
+            ),
           if (activeCount > 0)
             Padding(
               padding: const EdgeInsets.only(top: 12),
@@ -189,6 +199,11 @@ class _DiscoverFiltersState extends ConsumerState<DiscoverFiltersBar> {
                     _FilterChip(
                       label: '${t('filters.actor')}: ${query.actor}',
                       onRemove: () => _navigate(query.copyWith(actor: () => null)),
+                    ),
+                  if (query.network != null)
+                    _FilterChip(
+                      label: '${t('facts.networks')}: ${query.network}',
+                      onRemove: () => _navigate(query.copyWith(network: () => null)),
                     ),
                   if (query.bgAudio) _FilterChip(label: t('filters.bgAudio'), onRemove: () => _navigate(query.copyWith(bgAudio: false))),
                   if (query.sort != null)
@@ -214,6 +229,111 @@ class _DiscoverFiltersState extends ConsumerState<DiscoverFiltersBar> {
 }
 
 /// The "БГ аудио" pill — white while on, like the website's toggle.
+/// The ten networks as glass tiles with their logos drawn white (the TMDB
+/// logos come in every color, mostly dark); the picked one is in its own
+/// colors on a white tile with a sky-blue ring. Tapping it again clears it.
+class _NetworkRow extends StatelessWidget {
+  const _NetworkRow({required this.label, required this.selected, required this.onPick});
+
+  final String label;
+  final String? selected;
+  final ValueChanged<String?> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final inset = MediaQuery.sizeOf(context).width * 0.03;
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(LucideIcons.tv, size: 14, color: AppColors.fg(0.5)),
+              const SizedBox(width: 8),
+              Text(
+                label.toUpperCase(),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.96, color: AppColors.fg(0.5)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Runs edge to edge past the page padding, like the website's -mx-4.
+          Transform.translate(
+            offset: Offset(-inset, 0),
+            child: SizedBox(
+              width: MediaQuery.sizeOf(context).width,
+              height: 64,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.symmetric(horizontal: inset, vertical: 4),
+                itemCount: topNetworks.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
+                itemBuilder: (context, i) {
+                  final network = topNetworks[i];
+                  final active = network.name == selected;
+                  return Semantics(
+                    button: true,
+                    selected: active,
+                    label: network.name,
+                    child: Pressable(
+                      onTap: () => onPick(active ? null : network.name),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: 120,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          color: active ? Colors.white : null,
+                          gradient: active
+                              ? null
+                              : LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [Colors.white.withValues(alpha: 0.07), Colors.white.withValues(alpha: 0.02)],
+                                ),
+                          border: Border.all(color: active ? Colors.transparent : Colors.white.withValues(alpha: 0.1)),
+                          boxShadow: active
+                              ? [
+                                  BoxShadow(color: const Color(0xFF38BDF8).withValues(alpha: 0.9), spreadRadius: 2),
+                                  BoxShadow(color: const Color(0xFF38BDF8).withValues(alpha: 0.45), blurRadius: 24, offset: const Offset(0, 8)),
+                                ]
+                              : null,
+                        ),
+                        alignment: Alignment.center,
+                        child: SizedBox(
+                          height: 24,
+                          child: Opacity(
+                            opacity: active ? 1 : 0.72,
+                            child: ColorFiltered(
+                              colorFilter: active
+                                  ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
+                                  : const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                              child: CachedNetworkImage(
+                                imageUrl: tmdbImage(network.logo, TmdbSize.w300)!,
+                                fit: BoxFit.contain,
+                                fadeInDuration: const Duration(milliseconds: 150),
+                                errorWidget: (_, _, _) => Text(
+                                  network.name,
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: active ? AppColors.onWhite : Colors.white),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _BgAudioToggle extends ConsumerWidget {
   const _BgAudioToggle({required this.on, required this.onTap});
 
