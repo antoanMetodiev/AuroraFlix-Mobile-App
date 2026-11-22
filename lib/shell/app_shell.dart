@@ -380,7 +380,7 @@ class _FadeInWhenActive extends StatefulWidget {
 class _FadeInWhenActiveState extends State<_FadeInWhenActive> with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 380),
+    duration: const Duration(milliseconds: 260),
     value: widget.active ? 1 : 0,
   );
 
@@ -398,9 +398,7 @@ class _FadeInWhenActiveState extends State<_FadeInWhenActive> with SingleTickerP
 
   @override
   Widget build(BuildContext context) => FadeTransition(
-    // Fade only — no slide: embedded players / trailers are native views
-    // that wouldn't move with it.
-    opacity: CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    opacity: CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     child: widget.child,
   );
 }

@@ -18,45 +18,24 @@ import 'shell/app_shell.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
-/// A page opened inside a tab (title, actor, search, My week…) rises a little
-/// and fades in over the one under it (website: .page-enter). The page under
-/// it doesn't animate at all — fading it out flashed black and fought the
-/// embedded players. Back plays it in reverse, a bit quicker.
-Page<void> smoothPage(GoRouterState state, Widget child) => CustomTransitionPage<void>(
-  key: state.pageKey,
-  child: child,
-  transitionDuration: const Duration(milliseconds: 420),
-  reverseTransitionDuration: const Duration(milliseconds: 280),
-  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-    final curve = CurvedAnimation(parent: animation, curve: const Cubic(0.22, 1, 0.36, 1), reverseCurve: Curves.easeInCubic);
-    return FadeTransition(
-      opacity: curve,
-      child: SlideTransition(position: Tween(begin: const Offset(0, 0.03), end: Offset.zero).animate(curve), child: child),
-    );
-  },
-);
-
 /// Title details and actor pages, available under every tab so they open
 /// inside the tab you came from.
 List<RouteBase> _sharedRoutes() => [
   GoRoute(
     path: 'title/:type/:id',
-    pageBuilder: (context, state) => smoothPage(
-      state,
-      DetailsScreen(
-        key: ValueKey(state.uri.path),
-        type: state.pathParameters['type'] == 'series' ? RecordType.series : RecordType.movie,
-        id: state.pathParameters['id'] ?? '',
-        glideToPlayer: state.uri.queryParameters['watch'] == '1',
-      ),
+    builder: (context, state) => DetailsScreen(
+      key: ValueKey(state.uri.path),
+      type: state.pathParameters['type'] == 'series' ? RecordType.series : RecordType.movie,
+      id: state.pathParameters['id'] ?? '',
+      glideToPlayer: state.uri.queryParameters['watch'] == '1',
     ),
   ),
-  GoRoute(path: 'account/subscription', pageBuilder: (context, state) => smoothPage(state, const SubscriptionScreen())),
+  GoRoute(path: 'account/subscription', builder: (context, state) => const SubscriptionScreen()),
   GoRoute(
     path: 'actor/:id',
-    pageBuilder: (context, state) {
+    builder: (context, state) {
       final args = state.extra is ActorPageArgs ? state.extra! as ActorPageArgs : null;
-      return smoothPage(state, ActorScreen(actor: args?.actor, backgroundPath: args?.backgroundPath));
+      return ActorScreen(actor: args?.actor, backgroundPath: args?.backgroundPath);
     },
   ),
 ];
@@ -80,12 +59,9 @@ StatefulShellBranch _catalogBranch(String path, RecordType type) => _branch(
   routes: [
     GoRoute(
       path: 'search/:query',
-      pageBuilder: (context, state) => smoothPage(
-        state,
-        CatalogScreen(
-          key: ValueKey(state.uri.toString()),
-          query: CatalogQuery(type: type, search: state.pathParameters['query'], page: int.tryParse(state.uri.queryParameters['page'] ?? '') ?? 1),
-        ),
+      builder: (context, state) => CatalogScreen(
+        key: ValueKey(state.uri.toString()),
+        query: CatalogQuery(type: type, search: state.pathParameters['query'], page: int.tryParse(state.uri.queryParameters['page'] ?? '') ?? 1),
       ),
     ),
   ],
@@ -101,7 +77,7 @@ final appRouter = GoRouter(
       builder: (context, state, navigationShell) => navigationShell,
       navigatorContainerBuilder: (context, navigationShell, children) => AppShell(navigationShell: navigationShell, children: children),
       branches: [
-        _branch('/', (_) => const HomeScreen(), routes: [GoRoute(path: 'week', pageBuilder: (context, state) => smoothPage(state, const RecapScreen()))]),
+        _branch('/', (_) => const HomeScreen(), routes: [GoRoute(path: 'week', builder: (context, state) => const RecapScreen())]),
         _catalogBranch('/movies', RecordType.movie),
         _catalogBranch('/series', RecordType.series),
         _branch('/watchlist', (_) => const WatchlistScreen()),
@@ -113,8 +89,7 @@ final appRouter = GoRouter(
             GoRoute(
               path: ':type',
               redirect: (context, state) => const {'movie', 'series'}.contains(state.pathParameters['type']) ? null : '/order',
-              pageBuilder: (context, state) =>
-                  smoothPage(state, OrderFormScreen(type: state.pathParameters['type'] == 'series' ? RecordType.series : RecordType.movie)),
+              builder: (context, state) => OrderFormScreen(type: state.pathParameters['type'] == 'series' ? RecordType.series : RecordType.movie),
             ),
           ],
         ),
