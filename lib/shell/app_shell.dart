@@ -380,7 +380,7 @@ class _FadeInWhenActive extends StatefulWidget {
 class _FadeInWhenActiveState extends State<_FadeInWhenActive> with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 260),
+    duration: const Duration(milliseconds: 340),
     value: widget.active ? 1 : 0,
   );
 
@@ -397,8 +397,12 @@ class _FadeInWhenActiveState extends State<_FadeInWhenActive> with SingleTickerP
   }
 
   @override
-  Widget build(BuildContext context) => FadeTransition(
-    opacity: CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    child: widget.child,
-  );
+  Widget build(BuildContext context) {
+    // Same as the website's page transition: fades in from a little lower.
+    final curve = CurvedAnimation(parent: _controller, curve: const Cubic(0.22, 1, 0.36, 1));
+    return FadeTransition(
+      opacity: curve,
+      child: SlideTransition(position: Tween(begin: const Offset(0, 0.018), end: Offset.zero).animate(curve), child: widget.child),
+    );
+  }
 }
