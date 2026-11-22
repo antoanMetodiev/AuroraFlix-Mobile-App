@@ -12,6 +12,7 @@ import 'screens/details/details_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/order/order_screens.dart';
 import 'screens/playlists/playlists_screen.dart';
+import 'screens/recap/recap_screen.dart';
 import 'screens/watchlist/watchlist_screen.dart';
 import 'shell/app_shell.dart';
 
@@ -76,7 +77,7 @@ final appRouter = GoRouter(
       builder: (context, state, navigationShell) => navigationShell,
       navigatorContainerBuilder: (context, navigationShell, children) => AppShell(navigationShell: navigationShell, children: children),
       branches: [
-        _branch('/', (_) => const HomeScreen()),
+        _branch('/', (_) => const HomeScreen(), routes: [GoRoute(path: 'week', builder: (context, state) => const RecapScreen())]),
         _catalogBranch('/movies', RecordType.movie),
         _catalogBranch('/series', RecordType.series),
         _branch('/watchlist', (_) => const WatchlistScreen()),

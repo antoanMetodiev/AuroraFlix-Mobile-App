@@ -84,8 +84,9 @@ class SiteHeader extends ConsumerWidget {
             ],
           ),
           child: Glass(
-            // Black at 35% → 60% once scrolled, white/15 → white/20 border (the site's bg-black/35).
-            color: Colors.black.withValues(alpha: scrolled ? 0.6 : 0.35),
+            // Clear blurred glass, no tint (the site's bg-transparent backdrop-blur-2xl);
+            // white/15 → white/20 border once scrolled.
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(color: Colors.white.withValues(alpha: scrolled ? 0.2 : 0.15)),
             child: SizedBox(

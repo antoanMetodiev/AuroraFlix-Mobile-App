@@ -42,8 +42,8 @@ class AuroraTabBar extends ConsumerWidget {
           ],
         ),
         child: Glass(
-          // The site's bg-black/60 + border-white/15.
-          color: Colors.black.withValues(alpha: 0.6),
+          // Clear blurred glass (the site's bg-transparent) + border-white/15.
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(28),
           border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
           child: Stack(

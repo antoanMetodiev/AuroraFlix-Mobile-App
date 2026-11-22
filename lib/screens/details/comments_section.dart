@@ -558,9 +558,20 @@ class _ReactionsBarState extends ConsumerState<_ReactionsBar> {
             children: [
               Icon(icon, size: 14, color: mine ? activeText : AppColors.fg(0.6)),
               const SizedBox(width: 6),
-              Text(
-                '$count',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: mine ? activeText : AppColors.fg(0.6)),
+              // The count rolls in from below when it changes (website: .animate-count).
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+                transitionBuilder: (child, animation) => ClipRect(
+                  child: SlideTransition(
+                    position: Tween(begin: const Offset(0, 0.7), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
+                    child: FadeTransition(opacity: animation, child: child),
+                  ),
+                ),
+                child: Text(
+                  '$count',
+                  key: ValueKey(count),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: mine ? activeText : AppColors.fg(0.6)),
+                ),
               ),
             ],
           ),

@@ -18,6 +18,7 @@ import '../../widgets/loader.dart';
 import '../../widgets/pressable.dart';
 import '../details/details_background.dart';
 import '../playlists/playlist_card.dart' show PillTextField;
+import '../../widgets/empty_art.dart';
 
 /// Opens a saved title (watchlist / playlist row) — rows only carry the
 /// TMDB id and "MOVIE" / "TV-SHOW".
@@ -158,10 +159,16 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                         ),
-                        child: Text(
-                          t('watchlist.noMatches', {'query': _search.text.trim()}),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.fg(0.6)),
+                        child: Column(
+                          children: [
+                            const EmptyIllustration(art: EmptyArt.search, width: 128, height: 96),
+                            const SizedBox(height: 12),
+                            Text(
+                              t('watchlist.noMatches', {'query': _search.text.trim()}),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: AppColors.fg(0.6)),
+                            ),
+                          ],
                         ),
                       )
                     else
@@ -343,17 +350,8 @@ class _EmptyState extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.55), blurRadius: 30, spreadRadius: -8, offset: const Offset(0, 10))],
-            ),
-            child: const Icon(LucideIcons.bookmark, size: 26, color: AppColors.onWhite),
-          ),
-          const SizedBox(height: 24),
+          const EmptyIllustration(art: EmptyArt.watchlist),
+          const SizedBox(height: 16),
           Text(
             t('watchlist.emptyTitle'),
             textAlign: TextAlign.center,

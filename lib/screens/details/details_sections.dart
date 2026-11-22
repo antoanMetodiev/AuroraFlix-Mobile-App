@@ -18,6 +18,7 @@ import '../../widgets/reveal.dart';
 import '../../widgets/section_heading.dart';
 import '../../widgets/video_width.dart';
 import '../../widgets/watch_now_button.dart';
+import '../../widgets/title_accent.dart';
 
 /// The top of a title page (website: DetailsHeader): a cinematic backdrop
 /// banner with the title, year, tagline, genre chips, date and rating ring
@@ -35,6 +36,8 @@ class DetailsHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final screenHeight = MediaQuery.sizeOf(context).height;
+    final accent = TitleAccentScope.of(context);
+    final tint = TitleAccentScope.maybeOf(context);
     final chipStyle = TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.8));
 
     Widget chip(String text, {VoidCallback? onTap}) => Pressable(
@@ -45,7 +48,7 @@ class DetailsHeader extends ConsumerWidget {
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+          border: Border.all(color: accent.withValues(alpha: 0.22)),
         ),
         child: Text(text, style: chipStyle),
       ),
@@ -86,6 +89,17 @@ class DetailsHeader extends ConsumerWidget {
               const DecoratedBox(
                 decoration: BoxDecoration(gradient: LinearGradient(colors: [Color(0x99000000), Colors.transparent, Colors.transparent])),
               ),
+              // A wash of the title's own colour rising from the bottom-left (website: .accent-banner-wash).
+              if (tint != null)
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: const Alignment(-0.7, 1),
+                      radius: 0.9,
+                      colors: [tint.withValues(alpha: 0.28), Colors.transparent],
+                    ),
+                  ),
+                ),
               Positioned(
                 left: 16,
                 right: 16,
@@ -187,7 +201,7 @@ class DetailsHeader extends ConsumerWidget {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.black.withValues(alpha: 0.4), width: 2),
-                        boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.3), blurRadius: 24, spreadRadius: -4)],
+                        boxShadow: [BoxShadow(color: accent.withValues(alpha: 0.45), blurRadius: 28, spreadRadius: -4)],
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: AuroraImage(url: tmdbImage(record.posterImgURL, TmdbSize.w780)),

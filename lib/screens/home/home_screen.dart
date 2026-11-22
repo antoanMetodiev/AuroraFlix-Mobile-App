@@ -17,6 +17,8 @@ import 'home_scroll.dart';
 import 'last_viewed_section.dart';
 // PAYMENTS DISABLED: import 'pricing_section.dart';
 import 'trending_showcase.dart';
+import 'seasonal.dart';
+import '../recap/recap_screen.dart';
 
 /// The home screen — the website's app/page.tsx, section for section and in
 /// the same order: hero, pricing, continue watching, last viewed, trending showcase, cult rows,
@@ -115,14 +117,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             // PAYMENTS DISABLED — nobody is charged for now (same on the website).
             // PricingSection(key: _pricingKey),
+            const RecapPill(),
             const RevealOnScroll(child: ContinueWatchingSection()),
             const RevealOnScroll(child: LastViewedSection()),
             if (trending != null) TrendingShowcase(movies: trending.movies, series: trending.series),
+            // The season's themed row (seasonal.dart) — nothing outside a season.
+            const SeasonalSection(),
             const CultSection(),
             const SiteFooter(),
           ],
         ),
       ),
+        // Snow / embers / hearts over the home screen, in season.
+        const Positioned.fill(child: SeasonalEffects()),
       ],
     );
   }

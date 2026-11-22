@@ -8,6 +8,8 @@ import '../core/navigation.dart';
 import '../core/theme.dart';
 import '../core/tmdb.dart';
 import '../models/models.dart';
+import '../core/trending_ranks.dart';
+import 'empty_art.dart';
 import 'fade_in_image.dart';
 import 'pressable.dart';
 import 'rating_ring.dart';
@@ -18,9 +20,12 @@ import 'reveal.dart';
 /// the bottom the title, its tagline, "Movie • 9 October 2026" and up
 /// to two genres.
 class CinemaRecordCard extends ConsumerWidget {
-  const CinemaRecordCard({super.key, required this.record, this.lazy = false});
+  const CinemaRecordCard({super.key, required this.record, this.lazy = false, this.trendingRank});
 
   final CinemaRecord record;
+
+  /// Today's trending position, if it's in the top list — the "№3 днес" badge.
+  final int? trendingRank;
 
   /// Load the poster only once it's on screen — for cards past the first rows.
   final bool lazy;
@@ -64,12 +69,21 @@ class CinemaRecordCard extends ConsumerWidget {
                 ),
                 // Website: the same badge. It has to stay clear of the rating,
                 // and Greek's label is much longer than "БГ аудио".
-                if (record.hasBgAudio)
+                if (record.hasBgAudio || trendingRank != null)
                   Positioned(
                     top: 8,
                     left: 8,
                     right: rating != null ? 56 : 8,
-                    child: Align(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (trendingRank != null) ...[
+                          _TrendingBadge(label: t('card.trendingRank', {'rank': '$trendingRank'})),
+                          if (record.hasBgAudio) const SizedBox(height: 4),
+                        ],
+                        if (record.hasBgAudio)
+                    Align(
                       alignment: Alignment.centerLeft,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -96,6 +110,8 @@ class CinemaRecordCard extends ConsumerWidget {
                           ],
                         ),
                       ),
+                    ),
+                      ],
                     ),
                   ),
                 if (rating != null)
@@ -222,12 +238,46 @@ class CinemaRecordCard extends ConsumerWidget {
   }
 }
 
+/// "№3 днес": today's trending position (website: the card's flame badge).
+class _TrendingBadge extends StatelessWidget {
+  const _TrendingBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [Color(0xE6F59E0B), Color(0xE6F43F5E)]),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFFCD34D).withValues(alpha: 0.4)),
+        boxShadow: [BoxShadow(color: const Color(0xFFFB923C).withValues(alpha: 0.45), blurRadius: 12)],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(LucideIcons.flame, size: 11, color: Colors.white),
+          const SizedBox(width: 3),
+          Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
+        ],
+      ),
+    );
+  }
+}
+
 /// Two-column catalog grid whose cards rise in one after another once it
 /// scrolls into view (website: CinemaRecordGrid + `.animate-card-in`).
 class CinemaRecordGrid extends ConsumerWidget {
-  const CinemaRecordGrid({super.key, required this.records});
+  const CinemaRecordGrid({super.key, required this.records, this.trendingRanks, this.emptyAction});
 
   final List<CinemaRecord> records;
+
+  /// Today's trending position by TMDB id (trendingRanksProvider) — the "№3 днес" badge.
+  final Map<String, int>? trendingRanks;
+
+  /// Buttons under the "nothing found" state (catalog: clear filters / order).
+  final Widget? emptyAction;
 
   static const _maxStaggered = 24;
   static const _staggerStep = Duration(milliseconds: 45);
@@ -238,7 +288,7 @@ class CinemaRecordGrid extends ConsumerWidget {
     final t = ref.watch(translatorProvider);
 
     if (records.isEmpty) {
-      return EmptyResults(title: t('common.noResults'), message: t('common.noResultsDesc'));
+      return EmptyResults(title: t('empty.resultsTitle'), message: t('empty.resultsDesc'), illustration: EmptyArt.search, action: emptyAction);
     }
 
     return InViewOnce(
@@ -278,7 +328,7 @@ class CinemaRecordGrid extends ConsumerWidget {
                               visible: inView,
                               delay: _staggerStep * (i < _maxStaggered ? i : _maxStaggered),
                               // The first two rows load right away, the rest as they scroll in.
-                              child: CinemaRecordCard(record: records[i], lazy: i >= _eagerPosters),
+                              child: CinemaRecordCard(record: records[i], lazy: i >= _eagerPosters, trendingRank: trendingRanks?[trendingKey(records[i])]),
                             ),
                           ),
                       ],
@@ -299,12 +349,15 @@ class CinemaRecordGrid extends ConsumerWidget {
 /// awkward left-aligned break), the message under it and an optional
 /// [action] (a button) at the bottom.
 class EmptyResults extends StatelessWidget {
-  const EmptyResults({super.key, required this.title, this.message, this.icon = LucideIcons.search, this.action});
+  const EmptyResults({super.key, required this.title, this.message, this.icon = LucideIcons.search, this.action, this.illustration});
 
   final String title;
   final String? message;
   final IconData icon;
   final Widget? action;
+
+  /// A line-art illustration instead of the round icon (website: EmptyIllustration).
+  final EmptyArt? illustration;
 
   @override
   Widget build(BuildContext context) {
@@ -316,16 +369,19 @@ class EmptyResults extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: AppColors.fg(0.05),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            if (illustration != null)
+              EmptyIllustration(art: illustration!)
+            else
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.fg(0.05),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                ),
+                child: Icon(icon, size: 24, color: AppColors.fg(0.5)),
               ),
-              child: Icon(icon, size: 24, color: AppColors.fg(0.5)),
-            ),
             const SizedBox(height: 16),
             Text(
               title,

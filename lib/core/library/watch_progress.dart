@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_client.dart';
 import '../auth/auth_controller.dart';
 import '../i18n/locale.dart';
+import 'watch_log.dart';
 
 /// Where the viewer stopped in each movie / episode, kept on this device
 /// (website: lib/watch-progress.ts, same keys and rules).
@@ -274,6 +275,9 @@ class WatchProgressController extends Notifier<Map<String, WatchProgress>> {
   void save(ProgressTarget target, double seconds, double? duration, {String? title, String? image, bool approximate = false}) {
     if (!seconds.isFinite || seconds < _minSavedSeconds) return;
     if (duration != null && duration < _minDurationSeconds) return;
+
+    // Real time watched, for the weekly recap (watch_log.dart).
+    recordWatchTime(ref.read(sharedPreferencesProvider), target.key, seconds);
 
     final updatedAt = DateTime.now().millisecondsSinceEpoch;
     _whenKnown(() {

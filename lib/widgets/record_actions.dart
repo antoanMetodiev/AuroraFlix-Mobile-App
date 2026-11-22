@@ -9,6 +9,7 @@ import '../core/i18n/locale.dart';
 import '../core/library/watchlist.dart';
 import '../core/theme.dart';
 import '../models/models.dart';
+import 'burst.dart';
 import 'pressable.dart';
 
 /// `standard` sits on a page (44px, faint fill); `overlay` sits on a poster
@@ -37,6 +38,7 @@ class WatchlistButton extends ConsumerWidget {
       dimmed: loading,
       variant: variant,
       label: added ? t('watchlistButton.added') : t('watchlistButton.add'),
+      burstColors: const [Colors.white, Color(0xFFFCD34D), Color(0xFF7DD3FC)],
       onTap: added || loading ? null : () => ref.read(watchlistProvider.notifier).add(LibraryItem.fromRecord(record)),
     );
   }
@@ -98,6 +100,7 @@ class _LikeButtonState extends ConsumerState<LikeButton> {
           dimmed: loading,
           variant: widget.variant,
           label: liked ? t('likeButton.liked') : t('likeButton.like'),
+          burstColors: const [Color(0xFFFB7185), Color(0xFFF43F5E), Color(0xFFFDA4AF)],
           onTap: loading ? null : () => _toggle(liked),
         ),
         if (_showLimit)
@@ -141,8 +144,12 @@ class _ActionTile extends StatelessWidget {
     required this.variant,
     required this.label,
     required this.onTap,
+    required this.burstColors,
     this.dimmed = false,
   });
+
+  /// The particles when it turns on (website: Burst).
+  final List<Color> burstColors;
 
   final IconData icon;
 
@@ -193,9 +200,12 @@ class _ActionTile extends StatelessWidget {
             border: Border.all(color: border),
           ),
           child: Center(
-            child: active
-                ? FaIcon(activeIcon, size: overlay ? 12 : 16, color: foreground)
-                : Icon(icon, size: overlay ? 14 : 18, color: foreground),
+            child: Celebrate(
+              active: active,
+              colors: burstColors,
+              distance: overlay ? 20 : 28,
+              child: active ? FaIcon(activeIcon, size: overlay ? 12 : 16, color: foreground) : Icon(icon, size: overlay ? 14 : 18, color: foreground),
+            ),
           ),
         ),
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/theme.dart';
+import 'title_accent.dart';
 
 /// Section title with the glowing white bar in front of it — the website's
 /// SectionHeading (`mb-6`, `h-6 w-1` bar, `text-xl font-bold`).
@@ -27,9 +28,10 @@ class SectionHeading extends StatelessWidget {
             width: 4,
             height: 24,
             decoration: BoxDecoration(
-              color: Colors.white,
+              // The title's accent on a details screen, white elsewhere (website: .accent-bar).
+              color: TitleAccentScope.of(context),
               borderRadius: BorderRadius.circular(999),
-              boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.45), blurRadius: 12)],
+              boxShadow: [BoxShadow(color: TitleAccentScope.of(context).withValues(alpha: 0.5), blurRadius: 12)],
             ),
           ),
           const SizedBox(width: 12),

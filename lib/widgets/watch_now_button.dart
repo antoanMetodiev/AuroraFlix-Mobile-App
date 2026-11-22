@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../core/i18n/locale.dart';
 import 'pressable.dart';
+import 'title_accent.dart';
 
 /// The title page's main call to action (website: WatchNowButton) — a white
 /// pill next to the watchlist/like buttons that glides down to the player
@@ -27,7 +28,7 @@ class WatchNowButton extends ConsumerWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(999),
-          boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.6), blurRadius: 28, spreadRadius: -6, offset: const Offset(0, 6))],
+          boxShadow: [BoxShadow(color: TitleAccentScope.of(context).withValues(alpha: 0.65), blurRadius: 28, spreadRadius: -6, offset: const Offset(0, 6))],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

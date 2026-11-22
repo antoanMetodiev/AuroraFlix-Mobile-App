@@ -9,6 +9,7 @@ import '../../core/friends/friends_store.dart';
 import '../../core/i18n/locale.dart';
 import '../../core/navigation.dart';
 import '../../core/theme.dart';
+import '../../widgets/empty_art.dart';
 import '../../widgets/loader.dart';
 import '../../widgets/pressable.dart';
 import 'friend_widgets.dart';
@@ -313,10 +314,16 @@ class _FriendsPanelState extends ConsumerState<FriendsPanel> {
             : friends.friends.isEmpty
             ? Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text(
-                  t('friends.friendsEmpty'),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: AppColors.fg(0.5)),
+                child: Column(
+                  children: [
+                    const EmptyIllustration(art: EmptyArt.friends, width: 128, height: 96),
+                    const SizedBox(height: 12),
+                    Text(
+                      t('friends.friendsEmpty'),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14, color: AppColors.fg(0.5)),
+                    ),
+                  ],
                 ),
               )
             : _ScrollingList(

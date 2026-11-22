@@ -20,6 +20,7 @@ import 'details_sections.dart';
 import 'episodes_section.dart';
 import 'player_section.dart';
 import 'similar_titles_section.dart';
+import '../../widgets/title_accent.dart';
 
 typedef _DetailsKey = ({RecordType type, String id});
 
@@ -153,9 +154,16 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> with SingleTicker
           // No top padding: the banner starts at the very top, under the
           // floating header (DetailsHeader adds the header's height to it).
 
-          return Stack(
+          final posterForAccent = tmdbImage(record.posterImgURL, TmdbSize.w300);
+          final accent = posterForAccent == null ? null : ref.watch(titleAccentProvider(posterForAccent)).value;
+
+          return AnimatedTitleAccent(
+            color: accent,
+            child: Stack(
             children: [
               Positioned.fill(child: DetailsBackground(record: record)),
+              // The title's colour, faintly over the page background (website: .accent-page-tint).
+              const Positioned.fill(child: IgnorePointer(child: _AccentPageTint())),
               // Any touch takes over from a running "Watch now" glide.
               Listener(
                 onPointerDown: (_) => _slowScroll.cancel(),
@@ -180,8 +188,31 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> with SingleTicker
                 ),
               ),
             ],
+            ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// A soft wash of the title's accent from the top of the page; nothing
+/// without one (website: .accent-page-tint).
+class _AccentPageTint extends StatelessWidget {
+  const _AccentPageTint();
+
+  @override
+  Widget build(BuildContext context) {
+    final tint = TitleAccentScope.maybeOf(context);
+    if (tint == null) return const SizedBox.shrink();
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment.topCenter,
+          radius: 1.2,
+          colors: [tint.withValues(alpha: 0.14), Colors.transparent],
+          stops: const [0, 0.75],
+        ),
       ),
     );
   }

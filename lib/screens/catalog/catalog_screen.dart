@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/catalog_api.dart';
 import '../../core/api/catalog_cache.dart';
 import '../../core/i18n/locale.dart';
+import '../../core/trending_ranks.dart';
+import '../../widgets/pressable.dart';
 import '../../models/models.dart';
 import '../../router.dart';
 import '../../core/theme.dart';
@@ -60,6 +62,7 @@ class CatalogScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translatorProvider);
     final page = ref.watch(catalogPageProvider(query));
+    final ranks = ref.watch(trendingRanksProvider(query.type)).value;
 
     final typeLabel = query.type == RecordType.movie ? t('nav.movies') : t('nav.series');
     final heading = query.search != null
@@ -98,7 +101,11 @@ class CatalogScreen extends ConsumerWidget {
                     if (query.search != null && result.records.isEmpty && query.page == 1)
                       AutoOrderNotice(query: query)
                     else
-                      CinemaRecordGrid(records: result.records),
+                      CinemaRecordGrid(
+                        records: result.records,
+                        trendingRanks: ranks,
+                        emptyAction: _EmptyActions(listLocation: query.type == RecordType.movie ? '/movies' : '/series'),
+                      ),
                     PaginationControls(
                       current: query.page,
                       total: result.totalPages,
@@ -112,6 +119,49 @@ class CatalogScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Under "nothing found" (website: the grid's empty state): clear the
+/// filters, or order the title instead.
+class _EmptyActions extends ConsumerWidget {
+  const _EmptyActions({required this.listLocation});
+
+  final String listLocation;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(translatorProvider);
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 12,
+      runSpacing: 10,
+      children: [
+        Pressable(
+          onTap: () => context.go(listLocation),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: -4, offset: const Offset(0, 8))],
+            ),
+            child: Text(t('empty.clearFilters'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF171717))),
+          ),
+        ),
+        Pressable(
+          onTap: () => context.go('/order'),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+            ),
+            child: Text(t('empty.orderTitle'), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.fg(0.85))),
+          ),
+        ),
+      ],
     );
   }
 }
