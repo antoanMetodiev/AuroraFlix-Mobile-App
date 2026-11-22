@@ -1,7 +1,7 @@
 name: auroraflix
 description: "AuroraFlix — movies & series streaming app for Android, iOS and TV."
 publish_to: 'none'
-version: 0.3.8+14
+version: 0.3.9+15
 
 environment:
   sdk: ^3.13.2
@@ -23,6 +23,7 @@ dependencies:
   lucide_icons_flutter: ^3.1.25
   ota_update: ^7.1.0
   package_info_plus: ^10.2.2
+  share_plus: ^13.3.1
   shared_preferences: ^2.5.6
   url_launcher: ^6.3.3
   visibility_detector: ^0.4.0+2

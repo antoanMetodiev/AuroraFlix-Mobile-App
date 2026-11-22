@@ -3,12 +3,14 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/catalog_api.dart';
@@ -22,6 +24,7 @@ import '../../core/theme.dart';
 import '../../core/tmdb.dart';
 import '../../models/models.dart';
 import '../../shell/app_shell.dart';
+import '../../widgets/brand_icons.dart';
 import '../../widgets/empty_art.dart';
 import '../../widgets/fade_in_image.dart';
 import '../../widgets/loader.dart';
@@ -77,7 +80,10 @@ class RecapPill extends ConsumerWidget {
               children: [
                 const Icon(LucideIcons.sparkles, size: 15, color: Color(0xFFC4B5FD)),
                 const SizedBox(width: 10),
-                Text(t('recap.homePill'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground)),
+                Text(
+                  t('recap.homePill'),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.foreground),
+                ),
                 const SizedBox(width: 6),
                 Icon(LucideIcons.chevronRight, size: 15, color: AppColors.fg(0.5)),
               ],
@@ -137,10 +143,17 @@ class _RecapScreenState extends ConsumerState<RecapScreen> {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-                        decoration: BoxDecoration(color: _weeksAgo == ago ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(999)),
+                        decoration: BoxDecoration(
+                          color: _weeksAgo == ago ? Colors.white : Colors.transparent,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
                         child: Text(
                           t(ago == 0 ? 'recap.thisWeek' : 'recap.lastWeek'),
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _weeksAgo == ago ? AppColors.onWhite : AppColors.fg(0.65)),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: _weeksAgo == ago ? AppColors.onWhite : AppColors.fg(0.65),
+                          ),
                         ),
                       ),
                     ),
@@ -149,7 +162,11 @@ class _RecapScreenState extends ConsumerState<RecapScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          Text(range, textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.fg(0.5))),
+          Text(
+            range,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: AppColors.fg(0.5)),
+          ),
           const SizedBox(height: 24),
           if (data == null)
             const Loader(minHeight: 320)
@@ -164,7 +181,11 @@ class _RecapScreenState extends ConsumerState<RecapScreen> {
                   style: display(const TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
                 ),
                 const SizedBox(height: 8),
-                Text(t('recap.emptyDesc'), textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: AppColors.fg(0.55))),
+                Text(
+                  t('recap.emptyDesc'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: AppColors.fg(0.55)),
+                ),
                 const SizedBox(height: 20),
                 _WhiteButton(icon: LucideIcons.clapperboard, label: t('watchlist.browseMovies'), onTap: () => context.go('/movies')),
               ],
@@ -200,7 +221,10 @@ class _WhiteButton extends StatelessWidget {
           children: [
             Icon(icon, size: 15, color: AppColors.onWhite),
             const SizedBox(width: 8),
-            Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.onWhite)),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.onWhite),
+            ),
           ],
         ),
       ),
@@ -227,6 +251,45 @@ class _RecapStoryState extends ConsumerState<_RecapStory> with SingleTickerProvi
     })
     ..forward();
   int _slideCount = 1;
+
+  /// The story card, photographed for "Сподели".
+  final _cardKey = GlobalKey();
+
+  /// While true the progress bars are hidden, for a clean picture.
+  bool _capturing = false;
+
+  /// The card on screen as a 1080-wide PNG (website: html-to-image).
+  Future<Uint8List?> _captureCard() async {
+    setState(() => _capturing = true);
+    await WidgetsBinding.instance.endOfFrame;
+    try {
+      final boundary = _cardKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return null;
+      final image = await boundary.toImage(pixelRatio: 1080 / boundary.size.width);
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
+      return data?.buffer.asUint8List();
+    } catch (_) {
+      return null;
+    } finally {
+      if (mounted) setState(() => _capturing = false);
+    }
+  }
+
+  Future<void> _share(List<String> lines) async {
+    // The story waits on this card while it's being shared.
+    final wasRunning = _bar.isAnimating;
+    _bar.stop();
+    final png = _captureCard();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _ShareSheet(lines: lines, image: png),
+    );
+    if (mounted && wasRunning) _bar.forward();
+  }
 
   void _go(int index) {
     final next = index.clamp(0, _slideCount - 1);
@@ -311,7 +374,10 @@ class _RecapStoryState extends ConsumerState<_RecapStory> with SingleTickerProvi
                   for (final (i, title) in recap.titles.take(4).indexed)
                     Positioned(
                       left: i * 56.0,
-                      child: Transform.rotate(angle: (i - 1.5) * 0.09, child: _Poster(url: posterOf(title), width: 80)),
+                      child: Transform.rotate(
+                        angle: (i - 1.5) * 0.09,
+                        child: _Poster(url: posterOf(title), width: 80),
+                      ),
                     ),
                 ],
               ),
@@ -546,7 +612,11 @@ class _RecapStoryState extends ConsumerState<_RecapStory> with SingleTickerProvi
                               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
                             ),
                             Text(
-                              '${movie.finished ? '✓ ${t('recap.finishedBadge')}' : movie.percent != null ? t('recap.percentWatched', {'p': movie.percent!}) : ''} · ${_formatTime(movie.seconds, t)}',
+                              '${movie.finished
+                                  ? '✓ ${t('recap.finishedBadge')}'
+                                  : movie.percent != null
+                                  ? t('recap.percentWatched', {'p': movie.percent!})
+                                  : ''} · ${_formatTime(movie.seconds, t)}',
                               style: small.copyWith(fontSize: 11),
                             ),
                             const SizedBox(height: 4),
@@ -584,7 +654,9 @@ class _RecapStoryState extends ConsumerState<_RecapStory> with SingleTickerProvi
                     children: [
                       Row(
                         children: [
-                          Expanded(child: Text(g.label, style: muted.copyWith(color: Colors.white.withValues(alpha: 0.85)))),
+                          Expanded(
+                            child: Text(g.label, style: muted.copyWith(color: Colors.white.withValues(alpha: 0.85))),
+                          ),
                           Text('${g.share}%', style: small),
                         ],
                       ),
@@ -615,18 +687,27 @@ class _RecapStoryState extends ConsumerState<_RecapStory> with SingleTickerProvi
                   children: [
                     Row(
                       children: [
-                        Expanded(child: Text(t('recap.${part.name}'), style: muted.copyWith(color: Colors.white.withValues(alpha: 0.85)))),
+                        Expanded(
+                          child: Text(t('recap.${part.name}'), style: muted.copyWith(color: Colors.white.withValues(alpha: 0.85))),
+                        ),
                         Text((recap.timeOfDay[part] ?? 0) >= 30 ? _formatTime(recap.timeOfDay[part]!, t) : '—', style: small),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    _Bar(value: recap.timeOfDay[part] ?? 0, max: maxPart, color: part == favorite ? Colors.white : Colors.white.withValues(alpha: 0.5)),
+                    _Bar(
+                      value: recap.timeOfDay[part] ?? 0,
+                      max: maxPart,
+                      color: part == favorite ? Colors.white : Colors.white.withValues(alpha: 0.5),
+                    ),
                   ],
                 ),
               ),
             const SizedBox(height: 6),
             if (busiest != null) Text('📅 ${t('recap.dayTitle')}: ${dayName(busiest)}', style: muted),
-            if (recap.streak > 1) ...[const SizedBox(height: 4), Text('🔥 ${t('recap.streak', {'n': recap.streak})}', style: muted)],
+            if (recap.streak > 1) ...[
+              const SizedBox(height: 4),
+              Text('🔥 ${t('recap.streak', {'n': recap.streak})}', style: muted),
+            ],
             if (recap.nightOwl) ...[const SizedBox(height: 4), Text(t('recap.nightOwl'), style: muted)],
           ],
         ),
@@ -718,10 +799,7 @@ class _RecapStoryState extends ConsumerState<_RecapStory> with SingleTickerProvi
                 _Stat('${recap.activeDays}/7', t('recap.statDays')),
               ],
             ),
-            if (genres.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              Text('🎭 ${genres.take(2).map((g) => g.label).join(' · ')}', style: muted),
-            ],
+            if (genres.isNotEmpty) ...[const SizedBox(height: 14), Text('🎭 ${genres.take(2).map((g) => g.label).join(' · ')}', style: muted)],
             if (recap.first != null && recap.last != null && recap.first != recap.last) ...[
               const SizedBox(height: 6),
               Text('${t('recap.firstLast')} „${recap.first!.title}“, ${t('recap.endedWith')} „${recap.last!.title}“.', style: small),
@@ -732,6 +810,67 @@ class _RecapStoryState extends ConsumerState<_RecapStory> with SingleTickerProvi
     ];
     _slideCount = slides.length;
     final slide = slides[math.min(_index, slides.length - 1)];
+
+    /// The message for the card on screen (website: shareLines).
+    List<String> shareLines(String key) {
+      final header = '🎬 ${t('recap.shareHeader')} (${widget.range})';
+      String list(List<RecapTitle> titles) => titles.take(4).map((title) => title.title).join(', ');
+      final days = busiest != null
+          ? [
+              t('recap.shareDaysLine', {'n': recap.activeDays, 'day': dayName(busiest)}),
+            ]
+          : <String>[];
+      switch (key) {
+        case 'time':
+          return [
+            header,
+            t('recap.shareTimeLine', {'time': timeText}),
+            ...days,
+            if (change != null && change.abs() >= 5) changeText,
+          ];
+        case 'top':
+          return [
+            header,
+            if (top != null) t('recap.shareTopLine', {'title': top.title, 'time': _formatTime(top.seconds, t)}),
+          ];
+        case 'series':
+          return [
+            header,
+            if (topSeries != null) t('recap.shareSeriesLine', {'title': topSeries.title, 'count': topSeries.episodes.length}),
+          ];
+        case 'movies':
+          return [
+            header,
+            t('recap.shareMoviesLine', {'list': list(recap.movies)}),
+          ];
+        case 'genres':
+          return [
+            header,
+            t('recap.shareGenresLine', {'list': genres.map((g) => '${g.label} ${g.share}%').join(', ')}),
+          ];
+        case 'when':
+          return [
+            header,
+            t('recap.shareWhenLine', {'part': t('recap.${favorite.name}').toLowerCase()}),
+            ...days,
+            if (recap.streak > 1) '🔥 ${t('recap.streak', {'n': recap.streak})}',
+          ];
+        case 'continue':
+          return [
+            header,
+            t('recap.shareContinueLine', {'list': list(recap.inProgress)}),
+          ];
+        default:
+          return [
+            header,
+            t('recap.shareTimeLine', {'time': timeText}),
+            '🍿 ${t('recap.titlesTitle', {'count': recap.titles.length})} (${t('nav.movies')}: ${recap.movies.length} · ${t('sections.episodes')}: ${recap.episodesWatched})',
+            if (top != null) t('recap.shareTopLine', {'title': top.title, 'time': _formatTime(top.seconds, t)}),
+            if (genres.isNotEmpty) t('recap.shareGenresLine', {'list': genres.take(2).map((g) => g.label).join(', ')}),
+          ];
+      }
+    }
+
     final isLast = _index >= slides.length - 1;
 
     return Center(
@@ -741,95 +880,124 @@ class _RecapStoryState extends ConsumerState<_RecapStory> with SingleTickerProvi
           children: [
             AspectRatio(
               aspectRatio: 9 / 16,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(32),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    const ColoredBox(color: Color(0xFF171717)),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 500),
-                      child: KeyedSubtree(
-                        key: ValueKey('bg-${slide.key}'),
-                        child: slide.image != null
-                            ? Opacity(
-                                opacity: 0.45,
-                                child: ImageFiltered(
-                                  imageFilter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-                                  child: Transform.scale(scale: 1.25, child: AuroraImage(url: slide.image)),
-                                ),
-                              )
-                            : const DecoratedBox(
-                                decoration: BoxDecoration(
-                                  gradient: RadialGradient(
-                                    center: Alignment(-0.4, -0.6),
-                                    radius: 1.2,
-                                    colors: [Color(0x59A78BFA), Color(0x0038BDF8), Colors.transparent],
+              child: RepaintBoundary(
+                key: _cardKey,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(32),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      const ColoredBox(color: Color(0xFF171717)),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 500),
+                        child: KeyedSubtree(
+                          key: ValueKey('bg-${slide.key}'),
+                          child: slide.image != null
+                              ? Opacity(
+                                  opacity: 0.45,
+                                  child: ImageFiltered(
+                                    imageFilter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                                    child: Transform.scale(scale: 1.25, child: AuroraImage(url: slide.image)),
+                                  ),
+                                )
+                              : const DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: RadialGradient(
+                                      center: Alignment(-0.4, -0.6),
+                                      radius: 1.2,
+                                      colors: [Color(0x59A78BFA), Color(0x0038BDF8), Colors.transparent],
+                                    ),
                                   ),
                                 ),
-                              ),
-                      ),
-                    ),
-                    const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Color(0x66000000), Color(0x80000000), Color(0xD9000000)],
                         ),
                       ),
-                    ),
-                    // Tap zones: left quarter back, right quarter forward.
-                    Row(
-                      children: [
-                        Expanded(child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: () => _go(_index - 1))),
-                        const Expanded(flex: 2, child: SizedBox()),
-                        Expanded(child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: () => _go(_index + 1))),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 44, 24, 24),
-                      child: Center(
-                        child: SingleChildScrollView(
-                          physics: const ClampingScrollPhysics(),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 450),
-                            transitionBuilder: (child, animation) => FadeTransition(
-                              opacity: animation,
-                              child: SlideTransition(position: Tween(begin: const Offset(0, 0.04), end: Offset.zero).animate(animation), child: child),
-                            ),
-                            child: KeyedSubtree(key: ValueKey(slide.key), child: SizedBox(width: double.infinity, child: slide.body)),
+                      const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Color(0x66000000), Color(0x80000000), Color(0xD9000000)],
                           ),
                         ),
                       ),
-                    ),
-                    // Story progress bars.
-                    Positioned(
-                      left: 16,
-                      right: 16,
-                      top: 16,
-                      child: AnimatedBuilder(
-                        animation: _bar,
-                        builder: (context, _) => Row(
-                          children: [
-                            for (var i = 0; i < slides.length; i++)
-                              Expanded(
-                                child: Container(
-                                  height: 3,
-                                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(9)),
-                                  alignment: Alignment.centerLeft,
-                                  child: FractionallySizedBox(
-                                    widthFactor: i < _index ? 1 : (i == _index ? (isLast ? 1 : _bar.value) : 0),
-                                    child: Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(9))),
-                                  ),
+                      // Tap zones: left quarter back, right quarter forward.
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: () => _go(_index - 1)),
+                          ),
+                          const Expanded(flex: 2, child: SizedBox()),
+                          Expanded(
+                            child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: () => _go(_index + 1)),
+                          ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 44, 24, 24),
+                        child: Center(
+                          child: SingleChildScrollView(
+                            physics: const ClampingScrollPhysics(),
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 450),
+                              transitionBuilder: (child, animation) => FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween(begin: const Offset(0, 0.04), end: Offset.zero).animate(animation),
+                                  child: child,
                                 ),
                               ),
-                          ],
+                              child: KeyedSubtree(
+                                key: ValueKey(slide.key),
+                                child: SizedBox(width: double.infinity, child: slide.body),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      // The site's mark in the corner — it travels with the shared picture.
+                      Positioned(
+                        right: 20,
+                        bottom: 16,
+                        child: IgnorePointer(
+                          child: Text(
+                            'AuroraFlix · auroraflix.cloud',
+                            style: display(
+                              TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.4, color: Colors.white.withValues(alpha: 0.45)),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Story progress bars (left out of the shared picture).
+                      if (!_capturing)
+                        Positioned(
+                          left: 16,
+                          right: 16,
+                          top: 16,
+                          child: AnimatedBuilder(
+                            animation: _bar,
+                            builder: (context, _) => Row(
+                              children: [
+                                for (var i = 0; i < slides.length; i++)
+                                  Expanded(
+                                    child: Container(
+                                      height: 3,
+                                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(9)),
+                                      alignment: Alignment.centerLeft,
+                                      child: FractionallySizedBox(
+                                        widthFactor: i < _index ? 1 : (i == _index ? (isLast ? 1 : _bar.value) : 0),
+                                        child: Container(
+                                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(9)),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -839,15 +1007,15 @@ class _RecapStoryState extends ConsumerState<_RecapStory> with SingleTickerProvi
                 _RoundButton(icon: LucideIcons.chevronLeft, onTap: () => _go(_index - 1)),
                 SizedBox(
                   width: 48,
-                  child: Text('${_index + 1}/${slides.length}', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppColors.fg(0.5))),
+                  child: Text(
+                    '${_index + 1}/${slides.length}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: AppColors.fg(0.5)),
+                  ),
                 ),
                 _RoundButton(icon: LucideIcons.chevronRight, onTap: () => _go(_index + 1)),
                 const Spacer(),
-                _WhiteButton(
-                  icon: LucideIcons.send,
-                  label: t('recap.share'),
-                  onTap: () => _showShareSheet(context, ref, recap: recap, range: widget.range, timeText: timeText, genres: genres.map((g) => g.label).toList()),
-                ),
+                _WhiteButton(icon: LucideIcons.send, label: t('recap.share'), onTap: () => _share(shareLines(slide.key))),
               ],
             ),
           ],
@@ -869,7 +1037,10 @@ class _RoundButton extends StatelessWidget {
     child: Container(
       width: 40,
       height: 40,
-      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: 0.15))),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      ),
       child: Icon(icon, size: 18, color: AppColors.fg(0.75)),
     ),
   );
@@ -905,7 +1076,10 @@ class _Chip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
     decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(999)),
-    child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+    child: Text(
+      text,
+      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+    ),
   );
 }
 
@@ -923,8 +1097,18 @@ class _Stat extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        FittedBox(child: Text(value, style: display(const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)))),
-        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.6))),
+        FittedBox(
+          child: Text(
+            value,
+            style: display(const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)),
+          ),
+        ),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.6)),
+        ),
       ],
     ),
   );
@@ -944,48 +1128,44 @@ class _Bar extends StatelessWidget {
     alignment: Alignment.centerLeft,
     child: FractionallySizedBox(
       widthFactor: max > 0 && value > 0 ? math.max(0.03, value / max).clamp(0, 1).toDouble() : 0,
-      child: Container(decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(9))),
+      child: Container(
+        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(9)),
+      ),
     ),
   );
 }
 
-/// "Сподели": a sheet that shows exactly what will be sent, lets the viewer
-/// choose whether the titles are named, then hands it to an app (WhatsApp,
-/// Viber, Telegram, Facebook Messenger) or copies it.
-void _showShareSheet(
-  BuildContext context,
-  WidgetRef ref, {
-  required WeeklyRecap recap,
-  required String range,
-  required String timeText,
-  required List<String> genres,
-}) {
-  showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    // Above the shell's tab bar, not under it.
-    useRootNavigator: true,
-    backgroundColor: Colors.transparent,
-    builder: (context) => _ShareSheet(recap: recap, range: range, timeText: timeText, genres: genres),
-  );
-}
-
+/// "Сподели" for the card on screen (website: RecapShareSheet): a picture of
+/// exactly that card and a message written for it, then Instagram /
+/// Facebook / WhatsApp / Telegram / Reddit, or copy the text.
+///
+/// Every network gets the picture through the system share sheet (with the
+/// message, except Instagram, which takes pictures only) — the only way to
+/// hand another app an image. If the picture couldn't be made, the chat
+/// networks fall back to their text share links.
 class _ShareSheet extends ConsumerStatefulWidget {
-  const _ShareSheet({required this.recap, required this.range, required this.timeText, required this.genres});
+  const _ShareSheet({required this.lines, required this.image});
 
-  final WeeklyRecap recap;
-  final String range;
-  final String timeText;
-  final List<String> genres;
+  final List<String> lines;
+  final Future<Uint8List?> image;
 
   @override
   ConsumerState<_ShareSheet> createState() => _ShareSheetState();
 }
 
 class _ShareSheetState extends ConsumerState<_ShareSheet> {
-  bool _withTitles = true;
+  Uint8List? _png;
+  bool _ready = false;
   bool _copied = false;
   Timer? _copiedTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.image.then((png) {
+      if (mounted) setState(() => (_png = png, _ready = true));
+    });
+  }
 
   @override
   void dispose() {
@@ -993,33 +1173,35 @@ class _ShareSheetState extends ConsumerState<_ShareSheet> {
     super.dispose();
   }
 
-  String _text(Translator t) {
-    final recap = widget.recap;
-    final top = recap.titles.firstOrNull;
-    final series = recap.series.firstOrNull;
-    final lines = <String>[
-      '🎬 ${t('recap.shareHeader')} (${widget.range})',
-      '',
-      '⏱ ${widget.timeText} · ${recap.activeDays}/7 ${t('recap.statDays')}',
-      '🍿 ${t('recap.titlesTitle', {'count': recap.titles.length})} (${t('nav.movies')}: ${recap.movies.length} · ${t('sections.episodes')}: ${recap.episodesWatched})',
-      if (_withTitles && top != null) '🏆 ${t('recap.shareTop')}: ${top.title}',
-      if (_withTitles && series != null && series.episodes.length > 1)
-        '📺 ${t('recap.shareSeries')}: ${series.title} (${t('recap.episodesCount', {'count': series.episodes.length})})',
-      if (widget.genres.isNotEmpty) '🎭 ${widget.genres.take(2).join(' · ')}',
-      if (recap.streak > 1) '🔥 ${t('recap.streak', {'n': recap.streak})}',
-      '',
-      '${t('recap.shareCta')} $_siteUrl',
-    ];
-    return lines.join('\n');
+  String _text(Translator t) => [...widget.lines, '', '${t('recap.shareCta')} $_siteUrl'].join('\n');
+
+  Future<void> _shareTo(ShareNetwork network, Translator t) async {
+    final text = _text(t);
+    final png = _png;
+    if (png != null) {
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile.fromData(png, mimeType: 'image/png', name: 'auroraflix-week.png')],
+          fileNameOverrides: const ['auroraflix-week.png'],
+          text: network == ShareNetwork.instagram ? null : text,
+        ),
+      );
+      return;
+    }
+    final encoded = Uri.encodeComponent(text);
+    final site = Uri.encodeComponent(_siteUrl);
+    final url = switch (network) {
+      ShareNetwork.instagram => 'https://www.instagram.com/',
+      ShareNetwork.facebook => 'https://www.facebook.com/sharer/sharer.php?u=$site&quote=$encoded',
+      ShareNetwork.whatsapp => 'https://wa.me/?text=$encoded',
+      ShareNetwork.telegram => 'https://t.me/share/url?url=$site&text=${Uri.encodeComponent(widget.lines.join('\n'))}',
+      ShareNetwork.reddit => 'https://www.reddit.com/submit?url=$site&title=${Uri.encodeComponent(widget.lines.firstOrNull ?? 'AuroraFlix')}',
+    };
+    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication).catchError((_) => false);
   }
 
-  Future<void> _open(String url) async {
-    final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication).catchError((_) => false);
-    if (!ok && mounted) await _copy();
-  }
-
-  Future<void> _copy() async {
-    await Clipboard.setData(ClipboardData(text: _text(ref.read(translatorProvider))));
+  Future<void> _copy(Translator t) async {
+    await Clipboard.setData(ClipboardData(text: _text(t)));
     HapticFeedback.lightImpact();
     if (!mounted) return;
     setState(() => _copied = true);
@@ -1033,13 +1215,6 @@ class _ShareSheetState extends ConsumerState<_ShareSheet> {
   Widget build(BuildContext context) {
     final t = ref.watch(translatorProvider);
     final text = _text(t);
-    final encoded = Uri.encodeComponent(text);
-    final targets = [
-      (label: 'WhatsApp', color: const Color(0xFF25D366), url: 'https://wa.me/?text=$encoded'),
-      (label: 'Viber', color: const Color(0xFF7360F2), url: 'viber://forward?text=$encoded'),
-      (label: 'Telegram', color: const Color(0xFF29A9EB), url: 'https://t.me/share/url?url=${Uri.encodeComponent(_siteUrl)}&text=$encoded'),
-      (label: 'Messenger', color: const Color(0xFF0084FF), url: 'fb-messenger://share?link=${Uri.encodeComponent(_siteUrl)}'),
-    ];
 
     return Container(
       margin: EdgeInsets.only(top: MediaQuery.paddingOf(context).top + 40),
@@ -1062,79 +1237,95 @@ class _ShareSheetState extends ConsumerState<_ShareSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            Text(t('recap.shareSheetTitle'), style: display(const TextStyle(fontSize: 24, fontWeight: FontWeight.w600))),
-            const SizedBox(height: 4),
-            Text(t('recap.shareWillSend'), style: TextStyle(fontSize: 13, color: AppColors.fg(0.55))),
-            const SizedBox(height: 12),
-            // The message itself, as the other person will see it.
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0B3B2E),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(4),
-                ),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-              ),
-              child: SelectableText(text, style: const TextStyle(fontSize: 14, height: 1.45, color: Colors.white)),
-            ),
-            const SizedBox(height: 10),
-            Pressable(
-              onTap: () => setState(() => _withTitles = !_withTitles),
-              child: Row(
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: _withTitles ? Colors.white : Colors.transparent,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-                    ),
-                    child: _withTitles ? const Icon(LucideIcons.check, size: 14, color: AppColors.onWhite) : null,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(t('recap.includeTitles'), style: TextStyle(fontSize: 13, color: AppColors.fg(0.8)))),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(t('recap.shareVia'), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppColors.fg(0.45))),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
+            Text(t('recap.shareThisCard'), style: display(const TextStyle(fontSize: 24, fontWeight: FontWeight.w600))),
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final target in targets)
-                  Pressable(
-                    onTap: () => _open(target.url),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: target.color.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: target.color.withValues(alpha: 0.5)),
+                // The picture that will be sent.
+                Container(
+                  width: 104,
+                  height: 104 * 16 / 9,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF171717),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: _png != null
+                      ? Image.memory(_png!, fit: BoxFit.cover)
+                      : Center(
+                          child: _ready
+                              ? Text('—', style: TextStyle(color: AppColors.fg(0.4)))
+                              : Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Spinner(size: 22),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      t('recap.preparing'),
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(fontSize: 10, color: AppColors.fg(0.5)),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                ),
+                const SizedBox(width: 14),
+                // The message that goes with it, as the other person will see it.
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(t('recap.shareWillSend'), style: TextStyle(fontSize: 12, color: AppColors.fg(0.55))),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0B3B2E),
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                            topRight: Radius.circular(16),
+                            bottomLeft: Radius.circular(16),
+                            bottomRight: Radius.circular(4),
+                          ),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                        ),
+                        child: SelectableText(text, style: const TextStyle(fontSize: 13, height: 1.45, color: Colors.white)),
                       ),
-                      child: Text(target.label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                for (final network in ShareNetwork.values)
+                  Pressable(
+                    onTap: () => _shareTo(network, t),
+                    child: Column(
+                      children: [
+                        NetworkTile(network: network, size: 54),
+                        const SizedBox(height: 8),
+                        Text(
+                          networkLabels[network]!,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.fg(0.75)),
+                        ),
+                      ],
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 22),
             Pressable(
-              onTap: _copy,
+              onTap: () => _copy(t),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 13),
-                decoration: BoxDecoration(
-                  color: _copied ? const Color(0xFF6EE7B7) : Colors.white,
-                  borderRadius: BorderRadius.circular(999),
-                ),
+                decoration: BoxDecoration(color: _copied ? const Color(0xFF6EE7B7) : Colors.white, borderRadius: BorderRadius.circular(999)),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
