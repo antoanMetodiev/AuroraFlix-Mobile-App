@@ -5,15 +5,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/catalog_api.dart';
 import '../../models/models.dart';
 
+/// How many of each kind the home screen uses (hero, showcase, backdrop).
+const _homeMovies = 5;
+const _homeSeries = 5;
+
+/// The endpoints list #1 last, so the top N are the last N entries.
+List<T> _topTrending<T>(List<T> records, int count) =>
+    records.length <= count ? records : records.sublist(records.length - count);
+
 /// Both trending lists, fetched in parallel (website: app/page.tsx).
 final trendingProvider = FutureProvider<({List<CinemaRecord> movies, List<CinemaRecord> series})>((ref) async {
   final api = ref.watch(catalogApiProvider);
   final results = await Future.wait([api.trending(RecordType.movie), api.trending(RecordType.series)]);
-  return (movies: results[0], series: results[1]);
+  return (movies: _topTrending(results[0], _homeMovies), series: _topTrending(results[1], _homeSeries));
 });
-
-const _heroMovies = 10;
-const _heroSeries = 10;
 
 List<T> _shuffled<T>(List<T> items) => [...items]..shuffle(math.Random());
 
@@ -22,8 +27,8 @@ List<T> _shuffled<T>(List<T> items) => [...items]..shuffle(math.Random());
 /// Computed once per load, like the website does once per request.
 final heroItemsProvider = FutureProvider<List<CinemaRecord>>((ref) async {
   final trending = await ref.watch(trendingProvider.future);
-  final movies = _shuffled(trending.movies).take(_heroMovies).toList();
-  final series = _shuffled(trending.series).take(_heroSeries).toList();
+  final movies = _shuffled(trending.movies);
+  final series = _shuffled(trending.series);
   final mixed = <CinemaRecord>[];
   for (var i = 0; i < math.max(movies.length, series.length); i++) {
     if (i < movies.length) mixed.add(movies[i]);
