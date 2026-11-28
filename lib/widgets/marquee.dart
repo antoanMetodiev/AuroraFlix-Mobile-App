@@ -126,13 +126,14 @@ class _MarqueeState extends State<Marquee> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final horizontal = widget.axis == Axis.horizontal;
-    final copyLength = widget.itemCount * (widget.itemExtent + widget.spacing);
+    final step = widget.itemExtent + widget.spacing;
+    final copyLength = widget.itemCount * step;
 
     final items = [
       for (var copy = 0; copy < 2; copy++)
         for (var index = 0; index < widget.itemCount; index++)
-          Padding(
-            padding: horizontal ? EdgeInsets.only(right: widget.spacing) : EdgeInsets.only(bottom: widget.spacing),
+          KeyedSubtree(
+            key: ValueKey(copy * widget.itemCount + index),
             child: SizedBox(
               width: horizontal ? widget.itemExtent : null,
               height: horizontal ? null : widget.itemExtent,
@@ -172,23 +173,31 @@ class _MarqueeState extends State<Marquee> with SingleTickerProviderStateMixin {
           child: LayoutBuilder(
             builder: (context, constraints) {
               _viewportExtent = horizontal ? constraints.maxWidth : constraints.maxHeight;
-              return ClipRect(
-                child: AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    final progress = widget.reverse ? 1 - _controller.value : _controller.value;
-                    final shift = -progress * copyLength;
-                    return Transform.translate(offset: horizontal ? Offset(shift, 0) : Offset(0, shift), child: child);
-                  },
-                  child: OverflowBox(
-                    alignment: horizontal ? Alignment.centerLeft : Alignment.topCenter,
-                    maxWidth: horizontal ? double.infinity : null,
-                    maxHeight: horizontal ? null : double.infinity,
-                    child: horizontal
-                        ? Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: items)
-                        : Column(mainAxisSize: MainAxisSize.min, children: items),
-                  ),
-                ),
+              // Each item is positioned on its own inside a viewport-sized
+              // Stack, so where it's drawn is also where it can be tapped.
+              // (This used to slide one oversized Row/Column with
+              // Transform.translate inside an OverflowBox — but taps are only
+              // tested within the OverflowBox's own, viewport-sized bounds,
+              // in unshifted coordinates, so once the strip had moved, the
+              // cards on screen were outside them: tapping a cult title or a
+              // trending poster did nothing.)
+              return AnimatedBuilder(
+                animation: _controller,
+                builder: (context, _) {
+                  final progress = widget.reverse ? 1 - _controller.value : _controller.value;
+                  final shift = -progress * copyLength;
+                  return Stack(
+                    clipBehavior: Clip.hardEdge,
+                    children: [
+                      // Keeps the Stack viewport-sized: every item below is positioned.
+                      const SizedBox.expand(),
+                      for (var slot = 0; slot < items.length; slot++)
+                        horizontal
+                            ? Positioned(left: slot * step + shift, top: 0, child: items[slot])
+                            : Positioned(top: slot * step + shift, left: 0, right: 0, child: items[slot]),
+                    ],
+                  );
+                },
               );
             },
           ),
