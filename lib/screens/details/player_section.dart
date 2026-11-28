@@ -406,7 +406,9 @@ class _PlayerSectionState extends ConsumerState<PlayerSection> {
     if (!_hasStarted) _readResume();
 
     final hasOwn = subtitleUrl != null;
-    final embeds = hasOwn ? const [5, 1, 4, 2, 3, 6] : const [1, 2, 3, 6];
+    // VidFast (2) and VidSpark (6) are no longer offered (removed 2026-11-28,
+    // same as the website); their code paths stay, unused.
+    final embeds = hasOwn ? const [5, 1, 4, 3] : const [1, 3];
     final order = [if (bgAudioMaster != null) _bgAudioPlayer, if (filmi2k != null) _bgAudioPlayer2, ...embeds];
     final urls = _urls(vidsrcRef, subtitleUrl, bgAudioMaster, filmi2k);
     final activeSrc = urls[_active] ?? urls[1];
