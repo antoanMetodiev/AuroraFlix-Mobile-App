@@ -18,45 +18,62 @@ import 'user_profile_modal.dart';
 /// "Friends" (website: FriendsModal + FriendsPanel): Search / Requests /
 /// Friends tabs in the big centered card.
 Future<void> showFriendsModal(BuildContext context) async {
+  // The heading follows the open tab (Search / Requests / Friends), as on the website.
+  final tab = ValueNotifier(FriendsTab.search);
   await showAuroraModal(
     context,
     builder: (context) => Consumer(
       builder: (context, ref, _) => AuroraModalCard(
-        header: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
-              child: const Icon(LucideIcons.users, size: 20, color: Colors.white),
-            ),
-            const SizedBox(width: 16),
-            Flexible(
-              child: Text(
-                ref.watch(translatorProvider)('friends.title'),
-                overflow: TextOverflow.ellipsis,
-                style: display(const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: -0.6)),
+        header: ValueListenableBuilder(
+          valueListenable: tab,
+          builder: (context, open, _) => Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
+                child: Icon(open.icon, size: 20, color: Colors.white),
               ),
-            ),
-          ],
+              const SizedBox(width: 16),
+              Flexible(
+                child: Text(
+                  ref.watch(translatorProvider)(open.labelKey),
+                  overflow: TextOverflow.ellipsis,
+                  style: display(const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: -0.6)),
+                ),
+              ),
+            ],
+          ),
         ),
-        body: const SingleChildScrollView(padding: EdgeInsets.all(24), child: FriendsPanel()),
+        body: SingleChildScrollView(padding: const EdgeInsets.all(24), child: FriendsPanel(tab: tab)),
       ),
     ),
   );
 }
 
-enum _Tab { search, requests, friends }
+enum FriendsTab {
+  search('friends.tabSearch', LucideIcons.search),
+  requests('friends.tabRequests', LucideIcons.inbox),
+  friends('friends.tabFriends', LucideIcons.users);
+
+  const FriendsTab(this.labelKey, this.icon);
+
+  final String labelKey;
+  final IconData icon;
+}
 
 class FriendsPanel extends ConsumerStatefulWidget {
-  const FriendsPanel({super.key});
+  const FriendsPanel({super.key, required this.tab});
+
+  /// The open tab — owned by showFriendsModal, whose heading follows it.
+  final ValueNotifier<FriendsTab> tab;
 
   @override
   ConsumerState<FriendsPanel> createState() => _FriendsPanelState();
 }
 
 class _FriendsPanelState extends ConsumerState<FriendsPanel> {
-  _Tab _tab = _Tab.search;
+  FriendsTab get _tab => widget.tab.value;
   final _query = TextEditingController();
   final _focus = FocusNode();
   List<FriendSearchResult> _results = const [];
@@ -134,11 +151,11 @@ class _FriendsPanelState extends ConsumerState<FriendsPanel> {
 
     void openProfile(Friend person) => showUserProfileModal(context, person);
 
-    Widget tabButton(_Tab tab, IconData icon, int badge) {
+    Widget tabButton(FriendsTab tab, IconData icon, int badge) {
       final active = _tab == tab;
       return Expanded(
         child: Pressable(
-          onTap: () => setState(() => _tab = tab),
+          onTap: () => setState(() => widget.tab.value = tab),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -163,7 +180,7 @@ class _FriendsPanelState extends ConsumerState<FriendsPanel> {
 
     Widget body;
     switch (_tab) {
-      case _Tab.search:
+      case FriendsTab.search:
         body = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -279,7 +296,7 @@ class _FriendsPanelState extends ConsumerState<FriendsPanel> {
             ),
           ],
         );
-      case _Tab.requests:
+      case FriendsTab.requests:
         body = friends.isLoading
             ? const Loader(minHeight: 160)
             : _ScrollingList(
@@ -308,7 +325,7 @@ class _FriendsPanelState extends ConsumerState<FriendsPanel> {
                   ],
                 ],
               );
-      case _Tab.friends:
+      case FriendsTab.friends:
         body = friends.isLoading
             ? const Loader(minHeight: 160)
             : friends.friends.isEmpty
@@ -353,9 +370,9 @@ class _FriendsPanelState extends ConsumerState<FriendsPanel> {
           child: Row(
             spacing: 4,
             children: [
-              tabButton(_Tab.search, LucideIcons.search, 0),
-              tabButton(_Tab.requests, LucideIcons.inbox, friends.incoming.length),
-              tabButton(_Tab.friends, LucideIcons.users, 0),
+              tabButton(FriendsTab.search, LucideIcons.search, 0),
+              tabButton(FriendsTab.requests, LucideIcons.inbox, friends.incoming.length),
+              tabButton(FriendsTab.friends, LucideIcons.users, 0),
             ],
           ),
         ),

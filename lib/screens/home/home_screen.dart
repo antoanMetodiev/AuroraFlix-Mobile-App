@@ -117,12 +117,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             // PAYMENTS DISABLED — nobody is charged for now (same on the website).
             // PricingSection(key: _pricingKey),
-            const RecapPill(),
+            // "Your week" in the middle; the seasonal effects switch on the right of the same row.
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 24, 16, 0),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  RecapPill(),
+                  Align(alignment: Alignment.centerRight, child: SeasonalToggle()),
+                ],
+              ),
+            ),
             const RevealOnScroll(child: ContinueWatchingSection()),
             const RevealOnScroll(child: LastViewedSection()),
             if (trending != null) TrendingShowcase(movies: trending.movies, series: trending.series),
-            // The season's themed row (seasonal.dart) — nothing outside a season.
-            const SeasonalSection(),
             const CultSection(),
             const SiteFooter(),
           ],

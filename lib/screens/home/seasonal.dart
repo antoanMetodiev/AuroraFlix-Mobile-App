@@ -5,17 +5,12 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../core/api/catalog_api.dart';
-import '../../core/api/catalog_cache.dart';
 import '../../core/i18n/locale.dart';
 import '../../core/theme.dart';
-import '../../core/tmdb.dart';
-import '../../models/models.dart';
 import '../../widgets/pressable.dart';
-import '../../widgets/work_carousel.dart';
 
 /// Seasonal themes, switched on by date (website: lib/seasons.ts): light
-/// particles over the home screen and a themed row of titles.
+/// particles over the home screen, with an on/off switch.
 enum Season { winter, halloween, valentine }
 
 Season? activeSeason([DateTime? now]) {
@@ -43,79 +38,42 @@ class SeasonalFx extends Notifier<bool> {
 
 final seasonalFxProvider = NotifierProvider<SeasonalFx, bool>(SeasonalFx.new);
 
-WorkCardItem _item(CinemaRecord record) => WorkCardItem(
-  title: record.title,
-  posterURL: record.posterImgURL,
-  tmdbRating: record.tmdbRating,
-  type: record.type,
-  detailsId: detailsIdFor(record),
-);
-
-/// The season's titles (website: SeasonalSection's itemsFor), best rated first.
-final seasonalItemsProvider = FutureProvider<List<WorkCardItem>>((ref) async {
-  final season = activeSeason();
-  if (season == null) return const [];
-  expireAfter(ref, listingCacheTtl);
-  final api = ref.watch(catalogApiProvider);
-  List<CinemaRecord> records;
-  switch (season) {
-    case Season.winter:
-      final results = await Future.wait([
-        api.searchByTitle(RecordType.movie, 'Christmas').catchError((_) => <CinemaRecord>[]),
-        api.searchByTitle(RecordType.series, 'Christmas').catchError((_) => <CinemaRecord>[]),
-      ]);
-      records = [...results[0], ...results[1]];
-    case Season.halloween:
-      final results = await Future.wait([
-        api.searchByTitle(RecordType.movie, 'Halloween').catchError((_) => <CinemaRecord>[]),
-        api.discover(RecordType.movie, const DiscoverFilters(genre: 'Horror', sort: SortOption.topRated), 1).catchError((_) => <CinemaRecord>[]),
-      ]);
-      records = [...results[0], ...results[1]];
-    case Season.valentine:
-      records = await api.discover(RecordType.movie, const DiscoverFilters(genre: 'Romance', sort: SortOption.topRated), 1).catchError((_) => <CinemaRecord>[]);
-  }
-  final seen = <String>{};
-  final unique = records.where((record) => record.posterImgURL != null && seen.add('${record.type.name}-${detailsIdFor(record)}')).toList()
-    ..sort((a, b) => (b.rating ?? 0).compareTo(a.rating ?? 0));
-  return unique.take(20).map(_item).toList();
-});
-
-/// "🎄 Коледна селекция" with the effects switch (website: SeasonalSection).
-class SeasonalSection extends ConsumerWidget {
-  const SeasonalSection({super.key});
-
-  static const _emoji = {Season.winter: '🎄', Season.halloween: '🎃', Season.valentine: '💘'};
+/// The particles' on/off switch (website: SeasonalToggle) — next to the
+/// "Your week" pill on the home screen, only while a season is on. Icon-only
+/// on phones, where it shares that row with the pill. (The season's themed
+/// row of titles it used to sit on was removed on 2026-11-28, same as the
+/// website: no more themed selections.)
+class SeasonalToggle extends ConsumerWidget {
+  const SeasonalToggle({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final season = activeSeason();
-    if (season == null) return const SizedBox.shrink();
-    final items = ref.watch(seasonalItemsProvider).value ?? const [];
-    if (items.isEmpty) return const SizedBox.shrink();
+    if (activeSeason() == null) return const SizedBox.shrink();
     final t = ref.watch(translatorProvider);
     final on = ref.watch(seasonalFxProvider);
-    return WorkCarousel(
-      heading: '${_emoji[season]} ${t('seasonal.${season.name}')}',
-      items: items,
-      action: Align(
-        alignment: Alignment.centerLeft,
-        child: Pressable(
-          onTap: () => ref.read(seasonalFxProvider.notifier).toggle(),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.fg(0.05),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: AppColors.fg(0.15)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(LucideIcons.sparkles, size: 13, color: AppColors.fg(0.7)),
+    final label = t(on ? 'seasonal.fxOff' : 'seasonal.fxOn');
+    final wide = MediaQuery.sizeOf(context).width >= 640;
+    return Semantics(
+      button: true,
+      label: label,
+      child: Pressable(
+        onTap: () => ref.read(seasonalFxProvider.notifier).toggle(),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: wide ? 12 : 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.fg(0.05),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: AppColors.fg(0.15)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(LucideIcons.sparkles, size: 13, color: AppColors.fg(0.7)),
+              if (wide) ...[
                 const SizedBox(width: 6),
-                Text(t(on ? 'seasonal.fxOff' : 'seasonal.fxOn'), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.fg(0.7))),
+                Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.fg(0.7))),
               ],
-            ),
+            ],
           ),
         ),
       ),

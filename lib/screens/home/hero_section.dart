@@ -21,8 +21,8 @@ import 'hero_background.dart';
 
 const _swipeThreshold = 50.0;
 
-/// The homepage hero (website: HeroSection, phone layout): a slideshow of
-/// each trending title's stills behind its logo, synopsis, chips and
+/// The homepage hero (website: HeroSection, phone layout): each trending
+/// title's backdrop (10s each, slow zoom) behind its logo, synopsis, chips and
 /// actions; prev/next with a 01 / 20 counter; and the strip of title
 /// thumbnails along the bottom. Swipe sideways to switch.
 class HeroSection extends ConsumerStatefulWidget {
@@ -37,7 +37,7 @@ class HeroSection extends ConsumerStatefulWidget {
 class _HeroSectionState extends ConsumerState<HeroSection> {
   int _index = 0;
 
-  /// How far the current title's slideshow has got (0–1). A notifier, not
+  /// How far the current title's time in the hero has got (0–1). A notifier, not
   /// state: it ticks every 250ms, and as state each tick would rebuild the
   /// whole hero, rail included. Only the rail's bar listens to it.
   final _progress = ValueNotifier<double>(0);
@@ -225,7 +225,8 @@ class _HeroDetails extends ConsumerWidget {
                 ? SizedBox(
                     height: 64,
                     width: 140,
-                    child: AuroraImage(url: record.logoURL, fit: BoxFit.contain, alignment: Alignment.centerLeft),
+                    // TMDB logos come as /original/ — a 140px slot needs no more than w500 (~4x fewer bytes).
+                    child: AuroraImage(url: record.logoURL!.replaceFirst('/t/p/original/', '/t/p/w500/'), fit: BoxFit.contain, alignment: Alignment.centerLeft),
                   )
                 : Text(
                     record.title,

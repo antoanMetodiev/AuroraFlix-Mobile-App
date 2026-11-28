@@ -62,9 +62,8 @@ class RecapPill extends ConsumerWidget {
     final data = ref.watch(_recapProvider(0));
     if (data == null || data.recap.titles.isEmpty) return const SizedBox.shrink();
     final t = ref.watch(translatorProvider);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-      child: Center(
+    // Laid out by the home screen: centred, with the seasonal effects switch on the right.
+    return Center(
         child: Pressable(
           onTap: () => context.go('/week'),
           child: Container(
@@ -90,7 +89,6 @@ class RecapPill extends ConsumerWidget {
             ),
           ),
         ),
-      ),
     );
   }
 }
